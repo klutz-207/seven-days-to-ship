@@ -37,6 +37,7 @@ textarea {
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
+/* 主场景 */
 .scene-shell {
   position: relative;
   min-height: 100vh;
@@ -44,171 +45,41 @@ textarea {
   background: #130f0c;
 }
 
+/* 房间场景 - 现在使用真实背景图 */
 .room-stage {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-rows: 58vh 42vh;
   color: var(--foreground);
-  background:
-    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--room-b) 36%, transparent), transparent 24%),
-    linear-gradient(140deg, var(--room-a), var(--room-b) 48%, var(--room-c));
 }
 
+/* 房间背景图 */
+.room-stage img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 像素网格覆盖层 */
 .room-stage::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    radial-gradient(circle at 50% 120%, transparent 30%, rgba(0, 0, 0, 0.38));
-  background-size: 44px 44px, 44px 44px, auto;
-  mix-blend-mode: multiply;
-}
-
-.room-computer {
-  --room-a: #202235;
-  --room-b: #39a0a8;
-  --room-c: #f06a35;
-}
-
-.room-desk {
-  --room-a: #7c563b;
-  --room-b: #f0c36d;
-  --room-c: #2d7059;
-}
-
-.room-cafe {
-  --room-a: #8a3f2f;
-  --room-b: #efb04e;
-  --room-c: #315d73;
-}
-
-.room-bedroom {
-  --room-a: #2e405f;
-  --room-b: #bba3d8;
-  --room-c: #1c2230;
-}
-
-.room-showroom {
-  --room-a: #292929;
-  --room-b: #f4f0dc;
-  --room-c: #ff6b2f;
-}
-
-.room-wall {
-  position: relative;
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 4px 4px;
   z-index: 1;
-  padding: 8vh 5vw;
 }
 
-.room-window {
-  position: absolute;
-  left: 8vw;
-  top: 9vh;
-  width: min(28vw, 320px);
-  aspect-ratio: 1.35;
-  border: 5px solid rgba(32, 26, 20, 0.86);
-  background:
-    linear-gradient(90deg, transparent 47%, rgba(32, 26, 20, 0.75) 48% 52%, transparent 53%),
-    linear-gradient(transparent 47%, rgba(32, 26, 20, 0.75) 48% 52%, transparent 53%),
-    rgba(255, 248, 234, 0.28);
-  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.2);
-}
-
-.room-board {
-  position: absolute;
-  left: max(22rem, 42vw);
-  top: 12vh;
-  width: min(34rem, 42vw);
-  border: 4px solid rgba(32, 26, 20, 0.86);
-  background: rgba(255, 248, 234, 0.82);
-  padding: 1.35rem;
-  box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.24);
-}
-
-.room-board h1 {
-  margin-top: 0.3rem;
-  font-size: clamp(2.4rem, 5vw, 5.8rem);
-  font-weight: 900;
-  line-height: 0.92;
-}
-
-.room-floor {
-  position: relative;
-  z-index: 1;
-  background:
-    linear-gradient(160deg, rgba(0, 0, 0, 0.22), transparent 30%),
-    repeating-linear-gradient(90deg, rgba(32, 26, 20, 0.3) 0 2px, transparent 2px 12vw),
-    rgba(82, 52, 34, 0.58);
-  clip-path: polygon(0 16%, 100% 0, 100% 100%, 0 100%);
-}
-
-.room-prop {
-  position: absolute;
-  bottom: 15vh;
-  border: 4px solid rgba(32, 26, 20, 0.86);
-  background: rgba(255, 248, 234, 0.62);
-  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.2);
-}
-
-.room-prop--left {
-  left: 8vw;
-  width: min(24vw, 300px);
-  height: 7vh;
-}
-
-.room-prop--center {
-  left: 42vw;
-  bottom: 18vh;
-  display: grid;
-  width: min(18vw, 220px);
-  aspect-ratio: 1;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--panel);
-}
-
-.room-prop--center span {
-  font-size: clamp(3rem, 9vw, 7rem);
-  font-weight: 900;
-}
-
-.room-prop--right {
-  right: 8vw;
-  width: min(18vw, 220px);
-  height: 18vh;
-}
-
-.scene-title {
-  position: fixed;
-  left: clamp(1rem, 4vw, 4rem);
-  top: clamp(1rem, 4vw, 3rem);
-  z-index: 4;
-  color: var(--panel);
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35);
-}
-
-.scene-title p {
-  font-size: 0.78rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.scene-title h1 {
-  margin-top: 0.2rem;
-  font-size: clamp(2.8rem, 7vw, 7rem);
-  font-weight: 900;
-  line-height: 0.9;
-}
-
+/* HUD 面板 - 磨砂玻璃风格 */
 .scene-hud {
   position: fixed;
   right: clamp(1rem, 3vw, 2rem);
   top: clamp(1rem, 3vw, 2rem);
-  z-index: 5;
+  z-index: 50;
   display: grid;
   width: min(26rem, calc(100vw - 2rem));
   grid-template-columns: 5.5rem 1fr;
@@ -220,6 +91,7 @@ textarea {
   backdrop-filter: blur(10px);
 }
 
+/* 角色头像区域 */
 .scene-avatar {
   position: relative;
   display: grid;
@@ -227,73 +99,82 @@ textarea {
   place-items: center;
   border: 3px solid var(--line);
   background: #f1c15b;
+  overflow: hidden;
 }
 
-.scene-avatar__head {
-  position: absolute;
-  top: 1rem;
-  width: 2.5rem;
-  aspect-ratio: 1;
-  border: 3px solid var(--line);
-  border-radius: 999px;
-  background: #fff8ea;
+.scene-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
 }
 
-.scene-avatar__head::before,
-.scene-avatar__head::after {
-  content: "";
-  position: absolute;
-  top: 0.9rem;
-  width: 0.35rem;
-  height: 0.35rem;
-  border-radius: 999px;
-  background: var(--line);
-}
-
-.scene-avatar__head::before {
-  left: 0.55rem;
-}
-
-.scene-avatar__head::after {
-  right: 0.55rem;
-}
-
-.scene-avatar__body {
-  position: absolute;
-  bottom: 0.8rem;
-  width: 3.3rem;
-  height: 2.9rem;
-  border: 3px solid var(--line);
-  border-radius: 1rem 1rem 0.2rem 0.2rem;
-  background: #2358d0;
-}
-
-.scene-task {
+/* 时间线面板 - 磨砂玻璃风格 */
+.timeline-panel {
   position: fixed;
-  left: clamp(1rem, 5vw, 5rem);
-  bottom: clamp(11rem, 22vh, 15rem);
-  z-index: 4;
-  width: min(36rem, calc(100vw - 2rem));
+  left: clamp(1rem, 3vw, 2rem);
+  top: 50%;
+  z-index: 40;
+  width: min(20rem, calc(100vw - 2rem));
+  transform: translateY(-50%);
+  border: 3px solid var(--line);
+  background: rgba(255, 248, 234, 0.85);
+  padding: 1rem;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+}
+
+/* 状态面板 - 磨砂玻璃风格 */
+.status-panel {
+  position: fixed;
+  left: clamp(1rem, 3vw, 2rem);
+  top: clamp(1rem, 3vw, 2rem);
+  z-index: 50;
+  width: min(18rem, calc(100vw - 2rem));
   border: 3px solid var(--line);
   background: rgba(255, 248, 234, 0.9);
-  padding: 1.25rem;
-  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.28);
+  padding: 1rem;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
 }
 
-.scene-task h2 {
-  margin-top: 0.25rem;
-  font-size: clamp(1.7rem, 4vw, 3.6rem);
-  font-weight: 900;
-  line-height: 1;
+/* 输入框 - 底部居中，磨砂风格 */
+.dialogue-dock {
+  position: fixed;
+  bottom: clamp(0.75rem, 3vw, 2rem);
+  left: 50%;
+  z-index: 60;
+  transform: translateX(-50%);
+  width: min(40rem, calc(100vw - 2rem));
 }
 
+.dialogue-input {
+  width: 100%;
+  resize: none;
+  border: 3px solid var(--line);
+  background: rgba(255, 253, 246, 0.9);
+  padding: 0.75rem 1.25rem;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-size: 0.875rem;
+  outline: none;
+  backdrop-filter: blur(12px);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.25);
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+
+.dialogue-input:focus {
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
+  transform: translate(2px, 2px);
+}
+
+/* 路径条 - 像素风格 */
 .path-strip {
   position: fixed;
   right: clamp(1rem, 3vw, 2rem);
-  bottom: clamp(11rem, 22vh, 15rem);
-  z-index: 4;
+  bottom: clamp(5rem, 10vh, 8rem);
+  z-index: 40;
   display: flex;
-  max-width: min(28rem, calc(100vw - 2rem));
+  max-width: min(20rem, calc(100vw - 2rem));
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
@@ -301,116 +182,127 @@ textarea {
 
 .path-chip {
   display: grid;
-  width: 2.75rem;
+  width: 2.25rem;
   aspect-ratio: 1;
   place-items: center;
   border: 3px solid var(--line);
   background: var(--panel);
   font-weight: 900;
+  font-size: 0.75rem;
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.24);
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-.dialogue-dock {
+.path-chip:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.24);
+}
+
+/* 结局画面 */
+.scene-ending {
   position: fixed;
-  inset-inline: clamp(0.75rem, 3vw, 2rem);
-  bottom: clamp(0.75rem, 3vw, 2rem);
-  z-index: 6;
+  left: 50%;
+  top: 50%;
+  z-index: 80;
+  width: min(42rem, calc(100vw - 2rem));
+  transform: translate(-50%, -50%);
   border: 3px solid var(--line);
-  background: rgba(255, 248, 234, 0.94);
-  padding: 1rem;
-  box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 248, 234, 0.95);
+  padding: 2rem;
+  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
 }
 
-.dialogue-input {
-  min-height: 6.5rem;
-  width: 100%;
-  resize: none;
-  border: 3px solid var(--line);
-  background: #fffdf6;
-  padding: 1rem;
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-  font-size: 1rem;
-  outline: none;
-}
-
-.dialogue-input:focus {
-  box-shadow: inset 0 0 0 3px rgba(255, 107, 47, 0.28);
-}
-
-.dialogue-mode,
-.dialogue-send {
-  min-height: 2.8rem;
+/* 按钮样式 */
+.pixel-button {
   border: 3px solid var(--line);
   background: #fffdf6;
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
   font-weight: 800;
   transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.24);
 }
 
-.dialogue-mode:hover,
-.dialogue-send:hover {
+.pixel-button:hover {
   transform: translate(1px, 1px);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.24);
 }
 
-.dialogue-mode--active,
-.dialogue-send {
+.pixel-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.24);
+}
+
+.pixel-button--accent {
   background: var(--accent);
   color: white;
-  box-shadow: 4px 4px 0 var(--line);
 }
 
-.dialogue-send:disabled {
+.pixel-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.scene-ending {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  z-index: 8;
-  width: min(42rem, calc(100vw - 2rem));
-  transform: translate(-50%, -50%);
+/* 进度条 */
+.progress-bar {
+  height: 0.5rem;
+  background: rgba(0, 0, 0, 0.15);
+  border: 2px solid var(--line);
+  overflow: hidden;
 }
 
+.progress-bar__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 500ms ease;
+}
+
+/* 标签 */
+.tag {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  font-size: 0.75rem;
+  font-weight: 800;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.tag--warning {
+  background: var(--accent);
+  color: white;
+}
+
+/* 响应式 */
 @media (max-width: 760px) {
-  .room-stage {
-    grid-template-rows: 52vh 48vh;
-  }
-
-  .room-window {
-    left: 1rem;
-    top: 7rem;
-    width: 44vw;
-  }
-
-  .room-board {
-    left: 1rem;
-    right: 1rem;
-    top: 15rem;
-    width: auto;
-  }
-
   .scene-hud {
     top: 0.75rem;
     grid-template-columns: 4.25rem 1fr;
+    width: calc(100vw - 1.5rem);
+    right: 0.75rem;
   }
 
   .scene-avatar {
     min-height: 5rem;
   }
 
-  .scene-title {
-    top: 8rem;
-  }
-
-  .scene-task,
-  .path-strip {
+  .timeline-panel {
     display: none;
   }
 
-  .dialogue-input {
-    min-height: 5rem;
+  .status-panel {
+    top: auto;
+    bottom: 5rem;
+    left: 0.75rem;
+    width: calc(100vw - 1.5rem);
+  }
+
+  .dialogue-dock {
+    width: calc(100vw - 1.5rem);
+    bottom: 0.75rem;
+  }
+
+  .path-strip {
+    display: none;
   }
 }

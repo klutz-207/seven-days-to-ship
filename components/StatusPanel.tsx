@@ -24,82 +24,59 @@ const characterLabels: Record<keyof CharacterState, { label: string; icon: strin
 
 export function StatusPanel({ metrics, character, warnings }: StatusPanelProps) {
   return (
-    <section className="border-2 border-[var(--line)] bg-[var(--panel)] p-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="ui-font text-xs uppercase tracking-[0.14em] text-[var(--muted)]">Project Pulse</p>
-          <h2 className="text-4xl font-bold">{calculateMainProgress(metrics)}%</h2>
+    <section className="status-panel">
+      {/* 项目进度 */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="ui-font text-xs uppercase tracking-widest text-[var(--muted)]">Project Pulse</span>
+        <span className="text-2xl font-black">{calculateMainProgress(metrics)}%</span>
+      </div>
+
+      {/* 失衡警告 */}
+      {warnings.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1">
+          {warnings.map((warning) => (
+            <span key={warning} className="tag tag--warning">{warning}</span>
+          ))}
         </div>
-        <div className="ui-font flex flex-wrap gap-2 text-xs">
-          {warnings.length === 0 ? (
-            <span className="border border-[var(--line)] bg-white px-2 py-1">暂无失衡</span>
-          ) : (
-            warnings.map((warning) => (
-              <span key={warning} className="border border-[var(--line)] bg-[var(--accent)] px-2 py-1 text-white">
-                {warning}
-              </span>
-            ))
-          )}
+      )}
+
+      {/* 项目指标 */}
+      <div className="mb-3">
+        <h3 className="ui-font mb-2 text-xs font-bold text-[var(--muted)]">项目指标</h3>
+        <div className="grid gap-1.5">
+          {(Object.keys(metricLabels) as Array<keyof ProjectMetrics>).map((key) => (
+            <div key={key} className="grid grid-cols-[3.5rem_1fr_2rem] items-center gap-2">
+              <span className="ui-font text-xs text-[var(--muted)]">{metricLabels[key]}</span>
+              <div className="progress-bar">
+                <div
+                  className="progress-bar__fill"
+                  style={{ width: `${metrics[key]}%` }}
+                />
+              </div>
+              <span className="ui-font text-right text-xs font-bold">{metrics[key]}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <MetricGroup
-          title="项目指标"
-          items={(Object.keys(metricLabels) as Array<keyof ProjectMetrics>).map((key) => ({
-            key,
-            label: metricLabels[key],
-            value: metrics[key],
-          }))}
-        />
-        <MetricGroup
-          title="角色状态"
-          items={(Object.keys(characterLabels) as Array<keyof CharacterState>).map((key) => ({
-            key,
-            label: characterLabels[key].label,
-            value: character[key],
-            icon: characterLabels[key].icon,
-          }))}
-        />
+      {/* 角色状态 */}
+      <div>
+        <h3 className="ui-font mb-2 text-xs font-bold text-[var(--muted)]">角色状态</h3>
+        <div className="grid grid-cols-4 gap-2">
+          {(Object.keys(characterLabels) as Array<keyof CharacterState>).map((key) => (
+            <div key={key} className="flex flex-col items-center gap-1">
+              <img
+                src={characterLabels[key].icon}
+                alt={characterLabels[key].label}
+                className="h-6 w-6"
+                style={{ imageRendering: "pixelated" }}
+              />
+              <span className="ui-font text-[10px] text-[var(--muted)]">{characterLabels[key].label}</span>
+              <span className="ui-font text-xs font-bold">{character[key]}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
-  );
-}
-
-function MetricGroup({
-  title,
-  items,
-}: {
-  title: string;
-  items: Array<{ key: string; label: string; value: number; icon?: string }>;
-}) {
-  return (
-    <div>
-      <h3 className="ui-font mb-3 text-sm font-bold">{title}</h3>
-      <div className="grid gap-2">
-        {items.map((item) => (
-          <div key={item.key} className="grid grid-cols-[4.5rem_1fr_2.5rem] items-center gap-2">
-            <span className="ui-font flex items-center gap-1 text-sm text-[var(--muted)]">
-              {item.icon && (
-                <img
-                  src={item.icon}
-                  alt={item.label}
-                  className="h-4 w-4"
-                  style={{ imageRendering: "pixelated" }}
-                />
-              )}
-              {item.label}
-            </span>
-            <span className="h-3 border border-[var(--line)] bg-white">
-              <span
-                className="block h-full bg-[var(--accent-2)]"
-                style={{ width: `${item.value}%` }}
-              />
-            </span>
-            <span className="ui-font text-right text-sm">{item.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }

@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3efe7;
+  --foreground: #161616;
+  --panel: #fffaf0;
+  --ink: #202020;
+  --muted: #6e6a61;
+  --line: #1d1d1d;
+  --accent: #ff4f1f;
+  --accent-2: #0d8f68;
+  --accent-3: #2558d6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgba(32, 32, 32, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(32, 32, 32, 0.05) 1px, transparent 1px),
+    var(--background);
+  background-size: 28px 28px;
+  color: var(--foreground);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.ui-font {
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}

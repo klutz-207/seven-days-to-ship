@@ -11,9 +11,13 @@ interface CharacterHudProps {
 export function CharacterHud({ day, character, metrics, warnings }: CharacterHudProps) {
   return (
     <aside className="scene-hud">
-      <div className="scene-avatar" aria-label="数字人形象">
-        <span className="scene-avatar__head" />
-        <span className="scene-avatar__body" />
+      <div className="scene-avatar relative h-24 w-24 overflow-hidden border-2 border-[var(--line)]" aria-label="数字人形象">
+        <img
+          src="/characters/programmer/idle-down-01.png"
+          alt="数字人"
+          className="h-full w-full object-cover pixelated"
+          style={{ imageRendering: "pixelated" }}
+        />
       </div>
       <div className="min-w-0">
         <div className="ui-font flex items-center justify-between gap-3 text-xs text-[var(--muted)]">

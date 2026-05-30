@@ -15,11 +15,11 @@ const metricLabels: Record<keyof ProjectMetrics, string> = {
   creativity: "创意",
 };
 
-const characterLabels: Record<keyof CharacterState, string> = {
-  pressure: "压力",
-  selfhood: "自我感",
-  trust: "信任",
-  focus: "注意力",
+const characterLabels: Record<keyof CharacterState, { label: string; icon: string }> = {
+  pressure: { label: "压力", icon: "/ui/pressure.png" },
+  selfhood: { label: "自我感", icon: "/ui/selfhood.png" },
+  trust: { label: "信任", icon: "/ui/trust.png" },
+  focus: { label: "注意力", icon: "/ui/focus.png" },
 };
 
 export function StatusPanel({ metrics, character, warnings }: StatusPanelProps) {
@@ -56,8 +56,9 @@ export function StatusPanel({ metrics, character, warnings }: StatusPanelProps) 
           title="角色状态"
           items={(Object.keys(characterLabels) as Array<keyof CharacterState>).map((key) => ({
             key,
-            label: characterLabels[key],
+            label: characterLabels[key].label,
             value: character[key],
+            icon: characterLabels[key].icon,
           }))}
         />
       </div>
@@ -70,7 +71,7 @@ function MetricGroup({
   items,
 }: {
   title: string;
-  items: Array<{ key: string; label: string; value: number }>;
+  items: Array<{ key: string; label: string; value: number; icon?: string }>;
 }) {
   return (
     <div>
@@ -78,7 +79,17 @@ function MetricGroup({
       <div className="grid gap-2">
         {items.map((item) => (
           <div key={item.key} className="grid grid-cols-[4.5rem_1fr_2.5rem] items-center gap-2">
-            <span className="ui-font text-sm text-[var(--muted)]">{item.label}</span>
+            <span className="ui-font flex items-center gap-1 text-sm text-[var(--muted)]">
+              {item.icon && (
+                <img
+                  src={item.icon}
+                  alt={item.label}
+                  className="h-4 w-4"
+                  style={{ imageRendering: "pixelated" }}
+                />
+              )}
+              {item.label}
+            </span>
             <span className="h-3 border border-[var(--line)] bg-white">
               <span
                 className="block h-full bg-[var(--accent-2)]"

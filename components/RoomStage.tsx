@@ -7,12 +7,12 @@ interface RoomStageProps {
   latestLog?: ActionLogEntry;
 }
 
-const roomClasses: Record<RoomId, string> = {
-  computer: "room-computer",
-  desk: "room-desk",
-  cafe: "room-cafe",
-  bedroom: "room-bedroom",
-  showroom: "room-showroom",
+const roomBackgrounds: Record<RoomId, string> = {
+  computer: "/rooms/computer-room.png",
+  desk: "/rooms/desk-room.png",
+  cafe: "/rooms/cafe-room.png",
+  bedroom: "/rooms/bedroom-room.png",
+  showroom: "/rooms/showroom-room.png",
 };
 
 export function RoomStage({ action, path, latestLog }: RoomStageProps) {
@@ -20,39 +20,44 @@ export function RoomStage({ action, path, latestLog }: RoomStageProps) {
   const room = rooms[roomId];
 
   return (
-    <section className={`room-stage ${roomClasses[roomId]}`}>
-      <div className="room-wall">
-        <div className="room-window" />
+    <section className="room-stage relative overflow-hidden">
+      {/* 房间背景图 */}
+      <img
+        src={roomBackgrounds[roomId]}
+        alt={room.name}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+
+      {/* 半透明遮罩保证文字可读 */}
+      <div className="absolute inset-0 bg-black/40" />
+
+      {/* 内容层 */}
+      <div className="relative z-10 flex h-full flex-col justify-between p-6">
+        {/* 房间信息 */}
         <div className="room-board">
-          <p className="ui-font text-xs uppercase tracking-[0.16em]">Current Room</p>
-          <h1>{room.name}</h1>
-          <p className="ui-font">{room.description}</p>
+          <p className="ui-font text-xs uppercase tracking-[0.16em] text-white/70">Current Room</p>
+          <h1 className="text-3xl font-black text-white">{room.name}</h1>
+          <p className="ui-font mt-2 text-sm text-white/80">{room.description}</p>
         </div>
-      </div>
 
-      <div className="room-floor">
-        <div className="room-prop room-prop--left" />
-        <div className="room-prop room-prop--center">
-          <span>{room.shortName}</span>
+        {/* 当前行动 */}
+        <div className="scene-task">
+          <p className="ui-font text-xs text-white/60">当前行动</p>
+          <h2 className="text-xl font-bold text-white">{action?.task ?? "今日行动队列已完成"}</h2>
+          <div className="mt-4 h-3 bg-white/20">
+            <div className="h-full bg-[var(--accent)]" style={{ width: `${action?.progress ?? 100}%` }} />
+          </div>
+          <p className="ui-font mt-3 text-sm text-white/70">{latestLog?.text ?? "数字人正在等待你的第一句话。"}</p>
         </div>
-        <div className="room-prop room-prop--right" />
-      </div>
 
-      <div className="scene-task">
-        <p className="ui-font text-xs text-[var(--muted)]">当前行动</p>
-        <h2>{action?.task ?? "今日行动队列已完成"}</h2>
-        <div className="mt-4 h-3 bg-black/10">
-          <div className="h-full bg-[var(--accent)]" style={{ width: `${action?.progress ?? 100}%` }} />
+        {/* 路径条 */}
+        <div className="path-strip" aria-label="已点亮房间路径">
+          {path.slice(-9).map((item, index) => (
+            <span key={`${item}-${index}`} className="path-chip">
+              {rooms[item].shortName}
+            </span>
+          ))}
         </div>
-        <p className="ui-font mt-3 text-sm text-[var(--muted)]">{latestLog?.text ?? "数字人正在等待你的第一句话。"}</p>
-      </div>
-
-      <div className="path-strip" aria-label="已点亮房间路径">
-        {path.slice(-9).map((item, index) => (
-          <span key={`${item}-${index}`} className="path-chip">
-            {rooms[item].shortName}
-          </span>
-        ))}
       </div>
     </section>
   );

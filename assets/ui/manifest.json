@@ -1,0 +1,25 @@
+{
+  "id": "ui-icons",
+  "type": "pixel-art-ui",
+  "frameSize": {
+    "width": 128,
+    "height": 128
+  },
+  "interventions": {
+    "continue": "continue.png",
+    "interrupt": "interrupt.png",
+    "remind": "remind.png",
+    "approve": "approve.png"
+  },
+  "status": {
+    "pressure": "pressure.png",
+    "selfhood": "selfhood.png",
+    "trust": "trust.png",
+    "focus": "focus.png"
+  },
+  "notes": [
+    "All icons are PNG with transparent background.",
+    "All icons use the same 128x128 canvas.",
+    "The source sheet and preview are kept for review and regeneration."
+  ]
+}

@@ -11,11 +11,11 @@ interface InterventionPanelProps {
   disabled?: boolean;
 }
 
-const options: Array<{ value: InterventionType; label: string; hint: string }> = [
-  { value: "none", label: "继续运行", hint: "不插手，观察偏航是否出现。" },
-  { value: "interrupt", label: "打断", hint: "停下来重新判断方向。" },
-  { value: "remind", label: "提醒", hint: "加入一个新的考虑因素。" },
-  { value: "approve", label: "放行", hint: "明确支持当前行动。" },
+const options: Array<{ value: InterventionType; label: string; hint: string; icon: string }> = [
+  { value: "none", label: "继续运行", hint: "不插手，观察偏航是否出现。", icon: "/ui/continue.png" },
+  { value: "interrupt", label: "打断", hint: "停下来重新判断方向。", icon: "/ui/interrupt.png" },
+  { value: "remind", label: "提醒", hint: "加入一个新的考虑因素。", icon: "/ui/remind.png" },
+  { value: "approve", label: "放行", hint: "明确支持当前行动。", icon: "/ui/approve.png" },
 ];
 
 export function InterventionPanel({
@@ -35,12 +35,20 @@ export function InterventionPanel({
             key={option.value}
             type="button"
             onClick={() => onSelectedChange(option.value)}
-            className={`ui-font border-2 border-[var(--line)] p-3 text-left text-sm transition ${
+            className={`ui-font flex items-center gap-3 border-2 border-[var(--line)] p-3 text-left text-sm transition ${
               selected === option.value ? "bg-[var(--accent)] text-white" : "bg-white hover:bg-[#fff0d8]"
             }`}
           >
-            <span className="block font-bold">{option.label}</span>
-            <span className="mt-1 block text-xs opacity-80">{option.hint}</span>
+            <img
+              src={option.icon}
+              alt={option.label}
+              className="h-8 w-8 flex-shrink-0"
+              style={{ imageRendering: "pixelated" }}
+            />
+            <div>
+              <span className="block font-bold">{option.label}</span>
+              <span className="mt-1 block text-xs opacity-80">{option.hint}</span>
+            </div>
           </button>
         ))}
       </div>

@@ -1,0 +1,48 @@
+{
+  "id": "programmer",
+  "name": "普通程序员",
+  "type": "character",
+  "frameSize": {
+    "width": 128,
+    "height": 128
+  },
+  "anchor": {
+    "x": 64,
+    "y": 112
+  },
+  "animations": {
+    "idleDown": ["idle-down-01.png"],
+    "idleUp": ["idle-up-01.png"],
+    "idleLeft": ["idle-left-01.png"],
+    "idleRight": ["idle-right-01.png"],
+    "walkDown": [
+      "walk-down-01.png",
+      "walk-down-02.png",
+      "walk-down-03.png",
+      "walk-down-04.png"
+    ],
+    "walkUp": [
+      "walk-up-01.png",
+      "walk-up-02.png",
+      "walk-up-03.png",
+      "walk-up-04.png"
+    ],
+    "walkLeft": [
+      "walk-left-01.png",
+      "walk-left-02.png",
+      "walk-left-03.png",
+      "walk-left-04.png"
+    ],
+    "walkRight": [
+      "walk-right-01.png",
+      "walk-right-02.png",
+      "walk-right-03.png",
+      "walk-right-04.png"
+    ]
+  },
+  "notes": [
+    "All frames should be PNG with transparent background.",
+    "All frames must share the same canvas size and foot baseline.",
+    "Right-facing frames may be mirrored from left-facing frames only if the character design is visually symmetrical."
+  ]
+}

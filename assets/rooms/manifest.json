@@ -1,0 +1,16 @@
+{
+  "id": "room-backgrounds",
+  "type": "pixel-art-room-backgrounds",
+  "rooms": {
+    "computer": "computer-room.png",
+    "desk": "desk-room.png",
+    "cafe": "cafe-room.png",
+    "bedroom": "bedroom-room.png",
+    "showroom": "showroom-room.png"
+  },
+  "notes": [
+    "Room background images are stored with stable English filenames for frontend imports.",
+    "Original uploaded Chinese filenames were moved into this directory and renamed.",
+    "Keep future room assets in this directory rather than the project root."
+  ]
+}

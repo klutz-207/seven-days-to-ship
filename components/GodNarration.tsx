@@ -57,7 +57,7 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let fullNarration = "";
+        let fullContent = "";
         let finalData: CharacterData | null = null;
 
         while (true) {
@@ -83,23 +83,34 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
               continue;
             }
 
-            // 普通文字 chunk
-            fullNarration += data;
-            setNarration(fullNarration);
+            // 累积内容
+            fullContent += data;
+
+            // 尝试从累积内容中提取 narration
+            const extracted = extractNarration(fullContent);
+            setNarration(extracted);
           }
         }
 
         if (finalData) {
           setCharacterData(finalData);
+          setNarration(finalData.narration);
         } else {
-          // 兜底
-          const fallback: CharacterData = {
-            personality: "工程型",
-            trait: "遇到 Bug 会较真",
-            catchphrase: "先跑起来再说",
-            narration: fullNarration || `他的名字叫「${name}」。`,
-          };
-          setCharacterData(fallback);
+          // 尝试从完整内容中解析
+          const parsed = tryParseJSON(fullContent);
+          if (parsed) {
+            setCharacterData(parsed);
+            setNarration(parsed.narration);
+          } else {
+            // 兜底
+            const fallback: CharacterData = {
+              personality: "工程型",
+              trait: "遇到 Bug 会较真",
+              catchphrase: "先跑起来再说",
+              narration: fullContent || `他的名字叫「${name}」。`,
+            };
+            setCharacterData(fallback);
+          }
         }
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
@@ -278,4 +289,49 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
       `}</style>
     </div>
   );
+}
+
+/** 从内容中提取 narration 字段 */
+function extractNarration(content: string): string {
+  // 尝试匹配 JSON 中的 narration 字段
+  const narrationMatch = content.match(/"narration"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (narrationMatch) {
+    // 解析 JSON 转义字符
+    try {
+      return JSON.parse(`"${narrationMatch[1]}"`);
+    } catch {
+      return narrationMatch[1];
+    }
+  }
+
+  // 如果没有匹配到 JSON 格式，直接返回内容
+  // 过滤掉明显的 JSON 结构
+  if (content.startsWith("{") || content.startsWith("```")) {
+    return "";
+  }
+
+  return content;
+}
+
+/** 尝试解析 JSON */
+function tryParseJSON(content: string): CharacterData | null {
+  try {
+    // 尝试直接解析
+    const parsed = JSON.parse(content) as CharacterData;
+    if (parsed.personality && parsed.trait && parsed.catchphrase && parsed.narration) {
+      return parsed;
+    }
+  } catch {
+    // 尝试从 markdown 代码块中提取
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1].trim()) as CharacterData;
+        if (parsed.personality && parsed.narration) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return null;
 }

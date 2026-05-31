@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface GodNarrationProps {
   name: string;
-  onComplete: (data: { personality: string; trait: string; catchphrase: string }) => void;
+  onComplete: (data: { personality: string; trait: string; catchphrase: string }) => Promise<void>;
 }
 
 interface CharacterData {
@@ -18,6 +18,7 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
   const [narration, setNarration] = useState("");
   const [opacity, setOpacity] = useState(0);
   const [isDone, setIsDone] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [characterData, setCharacterData] = useState<CharacterData | null>(null);
   const charIndexRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -141,13 +142,18 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
   }, []);
 
   // 点击继续
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (characterData) {
-      onComplete({
-        personality: characterData.personality,
-        trait: characterData.trait,
-        catchphrase: characterData.catchphrase,
-      });
+      setIsLoading(true);
+      try {
+        await onComplete({
+          personality: characterData.personality,
+          trait: characterData.trait,
+          catchphrase: characterData.catchphrase,
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -225,7 +231,7 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
 
         {/* 按钮区域 */}
         <div className="mt-8 flex justify-center gap-4">
-          {!isDone && (
+          {!isDone && !isLoading && (
             <button
               type="button"
               onClick={handleSkip}
@@ -235,7 +241,7 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
               skip
             </button>
           )}
-          {isDone && (
+          {isDone && !isLoading && (
             <button
               type="button"
               onClick={handleContinue}
@@ -244,6 +250,12 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
               继续
             </button>
           )}
+          {isLoading && (
+            <div className="flex items-center gap-2">
+              <div className="loading-spinner" />
+              <span className="ui-font text-sm text-[var(--muted)]">正在构思项目...</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -251,6 +263,17 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        .loading-spinner {
+          width: 20px;
+          height: 20px;
+          border: 3px solid var(--line);
+          border-top-color: var(--accent);
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

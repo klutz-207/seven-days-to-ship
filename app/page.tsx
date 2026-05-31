@@ -216,7 +216,7 @@ export default function Home() {
     }
   }, [currentAction, state, characterData]);
 
-  // 自动推进回调：角色自主执行，每 3 秒推进 +10 进度
+  // 自动推进回调：角色自主执行，每 3 秒推进 +25 进度
   const handleAutoProgress = useCallback(() => {
     if (!isAutoProgress || !currentAction || isThinking) return;
     if (currentAction.progress >= 100) return;
@@ -225,7 +225,7 @@ export default function Home() {
       const current = prev.actions[prev.currentActionIndex];
       if (!current || current.progress >= 100) return prev;
 
-      const nextState = advanceState(prev, 10);
+      const nextState = advanceState(prev, 25);
       const nextCurrent = nextState.actions[nextState.currentActionIndex];
       const actionCompleted = !!nextCurrent && nextCurrent.progress >= 100;
       const halfReached = !hasShownHalf && nextCurrent && nextCurrent.progress >= 50;
@@ -327,7 +327,7 @@ export default function Home() {
 
     setState((prev) => {
       const decidedState = applyDecisionToState(prev, decision);
-      let nextState = advanceState(decidedState);
+      let nextState = advanceState(decidedState, 50);
 
       // 如果有灵感，增加创意值
       if (decision.inspiration && inspirationBonus > 0) {

@@ -160,21 +160,9 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
     }
   };
 
-  // 流式加载完成后立即标记 isDone
+  // 叙事显示完成后标记 isDone
   useEffect(() => {
-    if (characterData && !isDone) {
-      // 流式加载完成，检查是否需要逐字显示
-      if (narration === characterData.narration) {
-        // 已经显示完整，直接标记完成
-        setIsDone(true);
-      }
-      // 否则等待逐字显示完成（由下面的 effect 处理）
-    }
-  }, [characterData, narration, isDone]);
-
-  // 逐字显示完成后标记 isDone
-  useEffect(() => {
-    if (characterData && narration.length > 0 && narration === characterData.narration && !isDone) {
+    if (characterData && narration === characterData.narration && !isDone) {
       setIsDone(true);
     }
   }, [narration, characterData, isDone]);

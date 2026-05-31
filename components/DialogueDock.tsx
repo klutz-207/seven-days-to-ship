@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 interface DialogueDockProps {
   onSubmit: (note: string) => void;
@@ -61,6 +61,7 @@ function pickRandom(arr: string[]): string {
 
 export function DialogueDock({ onSubmit, disabled }: DialogueDockProps) {
   const [note, setNote] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -74,6 +75,8 @@ export function DialogueDock({ onSubmit, disabled }: DialogueDockProps) {
 
   const handleSuggest = (category: typeof SUGGESTION_CATEGORIES[number]) => {
     setNote(pickRandom(category.suggestions));
+    // 点击后焦点回到输入框
+    setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   return (
@@ -93,6 +96,7 @@ export function DialogueDock({ onSubmit, disabled }: DialogueDockProps) {
       </div>
       <div className="dialogue-input-wrapper">
         <textarea
+          ref={textareaRef}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           onKeyDown={handleKeyDown}

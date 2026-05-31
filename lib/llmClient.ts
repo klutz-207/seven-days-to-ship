@@ -1,4 +1,4 @@
-import type { DecisionResponse, RoomId, ProjectMetrics, CharacterState, ActionLogEntry, ProjectConcept } from "./types";
+import type { DecisionResponse, RoomId, ProjectMetrics, CharacterState, ActionLogEntry, ProjectConcept, GameState } from "./types";
 
 export interface ThinkingResponse {
   thinking: string;
@@ -28,6 +28,18 @@ interface VisionContext {
   personality: string;
   trait: string;
   catchphrase: string;
+}
+
+export interface EndingResponse {
+  productName: string;
+  description: string;
+  features: string[];
+  techStack: string[];
+  evaluation: string;
+}
+
+interface EndingContext {
+  state: GameState;
 }
 
 interface DecisionContext {
@@ -91,6 +103,23 @@ export async function callVisionAPI(ctx: VisionContext): Promise<VisionResponse 
     return await response.json();
   } catch (error) {
     console.error("Vision API failed:", error);
+    return null;
+  }
+}
+
+/** 调用结局 API - 生成完整产品结局 */
+export async function callEndingAPI(ctx: EndingContext): Promise<EndingResponse | null> {
+  try {
+    const response = await fetch("/api/ending", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ctx),
+    });
+
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error("Ending API failed:", error);
     return null;
   }
 }

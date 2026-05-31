@@ -547,9 +547,7 @@ export default function Home() {
 
       {/* 结局：独立场景分支 */}
       {sceneMode === "ending" && (
-        <div className="scene-ending">
-          <EndingReport state={state} onRestart={handleRestart} />
-        </div>
+        <EndingReport state={state} onRestart={handleRestart} />
       )}
     </main>
   );

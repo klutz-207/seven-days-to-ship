@@ -82,6 +82,10 @@ export function RoomStage({ action, path, latestLog, project, bubbleText, thinki
         } else {
           clearInterval(interval);
           setIsTyping(false);
+          // 打字机完成后，保持显示 2 秒
+          setTimeout(() => {
+            setTypewriterSource(null);
+          }, 2000);
         }
       }, 50);
 
@@ -114,7 +118,7 @@ export function RoomStage({ action, path, latestLog, project, bubbleText, thinki
   const currentBubbleText = useMemo(() => {
     // 打字机进行中
     if (isTyping && displayText) return displayText;
-    // 打字机结束，显示完整文本
+    // 打字机结束，显示完整文本（2秒内）
     if (!isTyping && typewriterSource === "bubble" && bubbleText) return bubbleText;
     if (!isTyping && typewriterSource === "thinking" && thinkingText) return thinkingText;
     // 加载中

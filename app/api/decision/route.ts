@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { callLLM } from "@/lib/llm";
 import { DECISION_SYSTEM_PROMPT, buildDecisionPrompt } from "@/lib/prompts";
 import type { DecisionResponse, RoomId, AiDecision } from "@/lib/types";
 
@@ -18,6 +19,8 @@ interface DecisionRequest {
     creativity: number;
   };
   recentLogs?: string[];
+  playerInput?: string;
+  thinking?: string;
 }
 
 export async function POST(request: Request) {
@@ -39,43 +42,18 @@ export async function POST(request: Request) {
       focus: body.focus,
       metrics: body.metrics,
       recentLogs: body.recentLogs,
+      playerInput: body.playerInput,
+      thinking: body.thinking,
     });
 
-    const response = await fetch(`${process.env.LLM_API_BASE_URL}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.LLM_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-v3.2",
-        messages: [
-          {
-            role: "system",
-            content: DECISION_SYSTEM_PROMPT,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 800,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!response.ok) {
-      console.error("LLM API error:", response.status, response.statusText);
-      return NextResponse.json(createMockDecision(body));
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      return NextResponse.json(createMockDecision(body));
-    }
+    const content = await callLLM(
+      [
+        { role: "system", content: DECISION_SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ],
+      false,
+      { temperature: 0.7, maxTokens: 800, responseFormat: { type: "json_object" } }
+    );
 
     const decision = JSON.parse(content) as DecisionResponse;
     return NextResponse.json(decision);
@@ -96,7 +74,7 @@ const ROOM_NAMES: Record<RoomId, string> = {
 };
 
 function createMockDecision(body: DecisionRequest): DecisionResponse {
-  const { room, task, day, pressure, selfhood, focus, metrics } = body;
+  const { room, task, day, pressure, selfhood, focus, metrics, playerInput } = body;
 
   // 核心状态判断
   const isHighPressure = pressure >= 75;
@@ -114,6 +92,10 @@ function createMockDecision(body: DecisionRequest): DecisionResponse {
       (metrics.stability >= 75 && metrics.creativity <= 35)
     : false;
 
+  // 灵感生成：玩家输入时有 30% 概率触发灵感
+  const hasInspiration = playerInput && Math.random() < 0.3;
+  const inspiration = hasInspiration ? pickRandom(INSPIRATIONS) : undefined;
+
   // 晚期 + 高压力 → 冲刺
   if (isLateGame && isHighPressure) {
     return buildResponse({
@@ -127,6 +109,7 @@ function createMockDecision(body: DecisionRequest): DecisionResponse {
       fromRoom: room,
       logText: `数字人没有抬头，手指在键盘上飞快地移动。${ROOM_NAMES[room]}里只剩下敲击声。`,
       reply: "",
+      inspiration,
     });
   }
 
@@ -143,6 +126,7 @@ function createMockDecision(body: DecisionRequest): DecisionResponse {
       fromRoom: room,
       logText: `数字人合上笔记本，起身走向书桌。他翻开空白文档，开始梳理项目的核心想法。`,
       reply: "我先想想这个项目到底要做什么。",
+      inspiration,
     });
   }
 
@@ -163,6 +147,7 @@ function createMockDecision(body: DecisionRequest): DecisionResponse {
         "我需要想想整体的方向。",
         "",
       ]),
+      inspiration,
     });
   }
 
@@ -179,6 +164,7 @@ function createMockDecision(body: DecisionRequest): DecisionResponse {
       fromRoom: room,
       logText: `数字人进入了工作状态。${ROOM_NAMES[room]}里，他的手指几乎没有停过。`,
       reply: "",
+      inspiration,
     });
   }
 
@@ -195,6 +181,7 @@ function createMockDecision(body: DecisionRequest): DecisionResponse {
       fromRoom: room,
       logText: `数字人揉了揉脖子，起身离开${ROOM_NAMES[room]}。他走向卧室，打算小憩一下。`,
       reply: "我有点累了，先休息一下。",
+      inspiration,
     });
   }
 
@@ -211,6 +198,7 @@ function createMockDecision(body: DecisionRequest): DecisionResponse {
       fromRoom: room,
       logText: `数字人放下手中的东西，起身走向咖啡馆。他想找个人聊聊，看看自己的方向是不是对的。`,
       reply: "我去转转，换换脑子。",
+      inspiration,
     });
   }
 
@@ -226,8 +214,23 @@ function createMockDecision(body: DecisionRequest): DecisionResponse {
     fromRoom: room,
     logText: `数字人在${ROOM_NAMES[room]}里继续当前的工作。`,
     reply: "",
+      inspiration,
   });
 }
+
+// 灵感池
+const INSPIRATIONS = [
+  "也许可以加个动画效果",
+  "这个交互可以更简洁",
+  "用渐变色会更有层次感",
+  "加个音效反馈怎么样",
+  "可以试试卡片式布局",
+  "这个功能可以做成可选的",
+  "用图标代替文字会更直观",
+  "加个 loading 状态会更专业",
+  "这个逻辑可以抽成公共方法",
+  "用动画过渡会更丝滑",
+];
 
 // ─── 辅助函数 ────────────────────────────────────────────────────
 
@@ -239,9 +242,11 @@ function buildResponse(params: {
   queueAction: string;
   reason: string;
   monologue: string;
+  playerInfluence?: "low" | "medium" | "high";
   fromRoom: RoomId;
   logText: string;
   reply: string;
+  inspiration?: string;
 }): DecisionResponse {
   return {
     decision: params.decision,
@@ -253,6 +258,7 @@ function buildResponse(params: {
     },
     decision_reason: params.reason,
     inner_monologue: params.monologue,
+    player_influence: params.playerInfluence ?? "low",
     path_deviation: {
       changed: params.fromRoom !== params.finalRoom,
       from: params.fromRoom,
@@ -260,6 +266,7 @@ function buildResponse(params: {
     },
     log_text: params.logText,
     reply: params.reply,
+    inspiration: params.inspiration || "",
   };
 }
 

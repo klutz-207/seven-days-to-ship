@@ -19,18 +19,18 @@ export function DayTransition({ day, onComplete }: DayTransitionProps) {
     // 淡入
     const fadeInTimer = setTimeout(() => {
       setOpacity(1);
-    }, 100);
+    }, 50);
 
     // 淡出
     const fadeOutTimer = setTimeout(() => {
       setOpacity(0);
-    }, 2500);
+    }, 1200);
 
     // 完成
     const completeTimer = setTimeout(() => {
       setIsVisible(false);
       onComplete();
-    }, 3000);
+    }, 1500);
 
     return () => {
       clearTimeout(fadeInTimer);
@@ -46,7 +46,7 @@ export function DayTransition({ day, onComplete }: DayTransitionProps) {
       className="fixed inset-0 z-[90] flex items-center justify-center bg-black"
       style={{
         opacity,
-        transition: "opacity 500ms ease",
+        transition: "opacity 300ms ease",
       }}
     >
       {/* 像素网格背景 */}
@@ -81,12 +81,8 @@ export function DayTransition({ day, onComplete }: DayTransitionProps) {
         {/* 提示 */}
         <p className="ui-font mt-8 text-sm text-white/30">
           {day === 1 && "新的开始"}
-          {day === 2 && "继续前进"}
-          {day === 3 && "第一阶段结束"}
-          {day === 4 && "进入第二阶段"}
-          {day === 5 && "保持专注"}
-          {day === 6 && "接近尾声"}
-          {day === 7 && "最终日"}
+          {day === 2 && "深入开发"}
+          {day === 3 && "最终冲刺"}
         </p>
       </div>
     </div>

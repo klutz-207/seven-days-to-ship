@@ -1,0 +1,169 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { rooms } from "@/lib/rooms";
+import type { ActionLogEntry, ActionNode, RoomId } from "@/lib/types";
+import { CharacterSprite } from "./CharacterSprite";
+import EventBubble from "./EventBubble";
+
+interface RoomStageProps {
+  action?: ActionNode;
+  path: RoomId[];
+  latestLog?: ActionLogEntry;
+  bubbleText?: string;
+  /** 气泡结束后通知父组件，用于驱动自动切换到下一个房间 */
+  onEventComplete?: () => void;
+}
+
+const roomBackgrounds: Record<RoomId, string> = {
+  computer: "/rooms/computer-room.png",
+  desk: "/rooms/desk-room.png",
+  cafe: "/rooms/cafe-room.png",
+  bedroom: "/rooms/bedroom-room.png",
+  showroom: "/rooms/showroom-room.png",
+};
+
+/** 每个房间的可行走地板区域（百分比） */
+const roomFloorAreas: Record<RoomId, { x: number; y: number; width: number; height: number }> = {
+  computer: { x: 0.1, y: 0.6, width: 0.8, height: 0.25 },
+  desk: { x: 0.1, y: 0.55, width: 0.8, height: 0.3 },
+  cafe: { x: 0.05, y: 0.6, width: 0.9, height: 0.25 },
+  bedroom: { x: 0.1, y: 0.6, width: 0.8, height: 0.25 },
+  showroom: { x: 0.15, y: 0.55, width: 0.7, height: 0.3 },
+};
+
+export function RoomStage({ action, path, latestLog, bubbleText, onEventComplete }: RoomStageProps) {
+  const roomId = action?.room ?? "desk";
+  const room = rooms[roomId];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [visibleBubble, setVisibleBubble] = useState<string | undefined>();
+
+  // 角色行走三阶段
+  const [characterState, setCharacterState] = useState<"walk-right-stop" | "idle" | "walk-left-stop">("walk-right-stop");
+  const [targetX, setTargetX] = useState(0.5);
+  const [phase, setPhase] = useState<"walking-to-center" | "showing-bubble" | "walking-to-exit">("walking-to-center");
+
+  // bubbleText 变化时（用户提交干预）覆盖当前气泡
+  useEffect(() => {
+    if (bubbleText) {
+      setVisibleBubble(bubbleText);
+    }
+  }, [bubbleText]);
+
+  // 到达中间：停下并显示气泡
+  const handleReachedCenter = useCallback(() => {
+    setCharacterState("idle");
+    setPhase("showing-bubble");
+    if (action && action.progress < 100) {
+      setVisibleBubble(action.task);
+    }
+  }, [action]);
+
+  // 气泡消失：向左走到出口
+  const handleBubbleComplete = useCallback(() => {
+    setVisibleBubble(undefined);
+    setPhase("walking-to-exit");
+    setCharacterState("walk-left-stop");
+    setTargetX(0.1);
+  }, []);
+
+  // 到达右边出口：通知父组件完成
+  const handleReachedExit = useCallback(() => {
+    onEventComplete?.();
+  }, [onEventComplete]);
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerSize({ width: rect.width, height: rect.height });
+      }
+    };
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
+  // action 变化时重新走入场，清除旧气泡，重置三阶段
+  useEffect(() => {
+    if (!action || action.progress >= 100) {
+      setCharacterState("idle");
+    } else {
+      setPhase("walking-to-center");
+      setCharacterState("walk-right-stop");
+      setTargetX(0.5);
+      setVisibleBubble(undefined);
+    }
+  }, [action]);
+
+  const walkableArea = roomFloorAreas[roomId];
+
+  // 气泡定位：基于 targetX 在可行走区域内的绝对像素位置
+  const bubbleX = walkableArea.x * containerSize.width + walkableArea.width * containerSize.width * targetX;
+  const bubbleY = (walkableArea.y + walkableArea.height / 2) * containerSize.height - 128 * 3.5;
+
+  return (
+    <section ref={containerRef} className="room-stage">
+      {/* 房间背景图 */}
+      <img
+        src={roomBackgrounds[roomId]}
+        alt={room.name}
+      />
+
+      {/* 半透明遮罩 */}
+      <div className="absolute inset-0 bg-black/20 z-[2]" />
+
+      {/* 角色精灵 */}
+      {containerSize.width > 0 && (
+        <CharacterSprite
+          actionState={characterState}
+          containerWidth={containerSize.width}
+          containerHeight={containerSize.height}
+          walkableArea={walkableArea}
+          targetX={targetX}
+          onReachedTarget={phase === "walking-to-center" ? handleReachedCenter : handleReachedExit}
+        />
+      )}
+
+      {/* 事件气泡 - 角色头顶 */}
+      {visibleBubble && containerSize.width > 0 && (
+        <EventBubble
+          text={visibleBubble}
+          x={bubbleX}
+          y={bubbleY}
+          onComplete={handleBubbleComplete}
+        />
+      )}
+
+      {/* 房间信息 - 左下角 */}
+      <div className="absolute bottom-6 left-6 z-[20] max-w-sm">
+        <p className="ui-font text-xs uppercase tracking-widest text-white/60">Current Room</p>
+        <h1 className="mt-1 text-2xl font-black text-white drop-shadow-lg">{room.name}</h1>
+
+        {/* 当前行动 */}
+        <div className="mt-4">
+          <p className="ui-font text-xs text-white/60">当前行动</p>
+          <h2 className="mt-1 text-lg font-bold text-white drop-shadow-md">{action?.task ?? "今日行动队列已完成"}</h2>
+          <div className="progress-bar mt-2 w-48">
+            <div
+              className="progress-bar__fill"
+              style={{ width: `${action?.progress ?? 100}%` }}
+            />
+          </div>
+          <p className="ui-font mt-2 text-sm text-white/70">{latestLog?.text ?? "数字人正在等待你的第一句话。"}</p>
+        </div>
+      </div>
+
+      {/* 路径条 - 右下角 */}
+      <div className="path-strip" aria-label="已点亮房间路径">
+        {path.slice(-9).map((item, index) => (
+          <span key={`${item}-${index}`} className="path-chip">
+            {rooms[item].shortName}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}

@@ -16,6 +16,25 @@ export function EndingReport({ state, onRestart }: EndingReportProps) {
         项目完成度停在 {calculateMainProgress(state.metrics)}%。这份报告现在由控制层判定标题，
         后续可以接入 `/api/ending` 生成更完整的项目结局、人格结局和路径复盘。
       </p>
+
+      {state.inspirationSet.length > 0 && (
+        <div className="mt-5">
+          <p className="ui-font text-xs uppercase tracking-[0.14em] text-[var(--muted)]">
+            灵感集（{state.inspirationSet.length}）
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {state.inspirationSet.map((item) => (
+              <span
+                key={item}
+                className="ui-font border border-[var(--line)] bg-[var(--bg)] px-2 py-1 text-xs"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={onRestart}

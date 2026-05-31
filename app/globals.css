@@ -147,12 +147,18 @@ textarea {
   width: min(40rem, calc(100vw - 2rem));
 }
 
+.dialogue-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
 .dialogue-input {
   width: 100%;
   resize: none;
   border: 3px solid var(--line);
   background: rgba(255, 253, 246, 0.9);
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 3rem 0.75rem 1.25rem;
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
   font-size: 0.875rem;
   outline: none;
@@ -164,6 +170,39 @@ textarea {
 .dialogue-input:focus {
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
   transform: translate(2px, 2px);
+}
+
+.dialogue-roll-btn {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: transform 100ms ease, background 100ms ease;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.dialogue-roll-btn:hover {
+  background: var(--accent);
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.dialogue-roll-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0.2);
+}
+
+.dialogue-roll-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* 路径条 - 像素风格 */
@@ -272,6 +311,12 @@ textarea {
   color: white;
 }
 
+/* DDAE 日志光标闪烁 */
+@keyframes journal-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 /* 响应式 */
 @media (max-width: 760px) {
   .scene-hud {
@@ -304,4 +349,28 @@ textarea {
   .path-strip {
     display: none;
   }
+}
+
+/* 背景音乐控制按钮 */
+.music-control {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 100;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  image-rendering: pixelated;
+}
+
+.music-control:hover {
+  opacity: 0.8;
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { callLLM } from "@/lib/llm";
 import { JOURNAL_SYSTEM_PROMPT, buildJournalPrompt } from "@/lib/prompts";
 import type { ActionNode, CharacterState, ProjectMetrics, RoomId } from "@/lib/types";
 
@@ -41,41 +42,14 @@ export async function POST(request: Request) {
       path: body.path,
     });
 
-    const response = await fetch(`${process.env.LLM_API_BASE_URL}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.LLM_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-v3.2",
-        messages: [
-          {
-            role: "system",
-            content: JOURNAL_SYSTEM_PROMPT,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.8,
-        max_tokens: 600,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!response.ok) {
-      console.error("LLM API error:", response.status, response.statusText);
-      return NextResponse.json(createMockJournal(body));
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      return NextResponse.json(createMockJournal(body));
-    }
+    const content = await callLLM(
+      [
+        { role: "system", content: JOURNAL_SYSTEM_PROMPT },
+        { role: "user", content: prompt },
+      ],
+      false,
+      { temperature: 0.8, maxTokens: 600, responseFormat: { type: "json_object" } }
+    );
 
     const journal = JSON.parse(content) as JournalResponse;
     return NextResponse.json(journal);

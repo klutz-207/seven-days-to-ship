@@ -21,8 +21,6 @@ interface CharacterSpriteProps {
   targetX?: number;
   /** 角色到达目标位置回调（walk-right-stop / walk-left-stop 专用） */
   onReachedTarget?: () => void;
-  /** stop 行走开始时是否重置到边界；房间离场时需要保留当前位置 */
-  startFrom?: "edge" | "current";
 }
 
 // 精灵图帧定义
@@ -108,25 +106,12 @@ export function CharacterSprite({
   walkableArea,
   targetX = 0.9,
   onReachedTarget,
-  startFrom = "edge",
 }: CharacterSpriteProps) {
   const [position, setPosition] = useState<Position>({
     x: containerWidth * 0.1,
     y: containerHeight * 0.75,
   });
   const animFrameRef = useRef<number | null>(null);
-
-  // actionState 变化时重置起始位置
-  useEffect(() => {
-    if (containerWidth === 0) return;
-    const bounds = getBounds();
-    const midY = (bounds.minY + bounds.maxY) / 2;
-    if (actionState === "walk-left-stop" && startFrom === "edge") {
-      setPosition({ x: bounds.maxX, y: midY });
-    } else if (actionState === "walk-right-stop") {
-      setPosition({ x: bounds.minX, y: midY });
-    }
-  }, [actionState, containerWidth, containerHeight, walkableArea, startFrom]);
 
   // 计算可行走边界
   const getBounds = () => {
@@ -262,7 +247,7 @@ export function CharacterSprite({
     };
   }, [actionState, containerWidth, containerHeight, walkableArea]);
 
-  // walk-left-stop 模式：从右侧走到目标位置后停下
+  // walk-left-stop 模式：向左走到目标位置后停下
   useEffect(() => {
     if (actionState !== "walk-left-stop") return;
 
@@ -271,11 +256,10 @@ export function CharacterSprite({
     const targetPx = bounds.minX + (bounds.maxX - bounds.minX) * targetX;
     let reached = false;
 
-    if (startFrom === "edge") {
-      setPosition({ x: bounds.maxX, y: midY });
-    } else {
-      setPosition((prev) => ({ x: prev.x, y: midY }));
-    }
+    // 确保 Y 位置正确
+    setPosition((prev) => {
+      return { x: prev.x, y: midY };
+    });
 
     const walk = () => {
       setPosition((prev) => {
@@ -305,16 +289,11 @@ export function CharacterSprite({
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [actionState, containerWidth, containerHeight, walkableArea, targetX, onReachedTarget, startFrom]);
+  }, [actionState, containerWidth, containerHeight, walkableArea, targetX, onReachedTarget]);
 
   // idle 模式：停下不动，无需额外逻辑
 
-  const direction: Direction =
-    actionState === "idle"
-      ? "down"
-      : actionState === "walk-left" || actionState === "walk-left-stop"
-        ? "left"
-        : "right";
+  const direction: Direction = actionState === "walk-left" || actionState === "walk-left-stop" ? "left" : "right";
   const frames = SPRITE_FRAMES[actionState][direction];
 
   const scale = 3.5;

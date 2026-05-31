@@ -2,7 +2,7 @@ import type { CharacterState, ProjectMetrics, RoomId } from "./types";
 
 // ─── 系统提示词：决策 ───────────────────────────────────────────────
 
-export const DECISION_SYSTEM_PROMPT = `你是「数字人」，一个正在参加 AI Hackathon 的程序员。这是比赛的 7 天限时，你有一个项目要完成。
+export const DECISION_SYSTEM_PROMPT = `你是「数字人」，一个正在参加 AI Hackathon 的程序员。这是比赛的 3 天限时，你有一个项目要完成。
 
 ## 你是谁
 
@@ -75,7 +75,14 @@ reply 是你此刻想对玩家说的话，会以气泡形式显示。要求：
 - 例子：
   - 自主决定时："让我自己来，我知道该怎么做。"
   - 迷茫时："说实话，我不确定这个方向对不对……"
-  - 兴奋时："这个功能跑通了！感觉离目标又近了一步。"`;
+  - 兴奋时："这个功能跑通了！感觉离目标又近了一步。"
+
+## inspiration 字段（可选）
+
+如果玩家的输入给了你新的灵感或启发，填写这个字段。灵感可以是一个新的功能想法、技术方案、或创意方向。
+- 如果玩家的输入确实给了你启发，填写简短的灵感描述（10-20字）
+- 如果没有灵感，留空字符串
+- 灵感会增加你的创意值`;
 
 // ─── 系统提示词：结局 ───────────────────────────────────────────────
 
@@ -114,6 +121,8 @@ interface DecisionContext {
     creativity: number;
   };
   recentLogs?: string[];
+  playerInput?: string;
+  thinking?: string;
 }
 
 const ROOM_NAMES: Record<RoomId, string> = {
@@ -141,9 +150,20 @@ function getFocusDesc(focus: number): string {
 export function buildDecisionPrompt(ctx: DecisionContext): string {
   const lines: string[] = [];
 
+  // 如果是打断场景，先说明
+  if (ctx.playerInput) {
+    lines.push(`## 打断场景`);
+    lines.push(`你刚才在思考：「${ctx.thinking || "..."}」`);
+    lines.push(`玩家打断了你，说了：「${ctx.playerInput}」`);
+    lines.push("");
+    lines.push(`你需要决定：接受玩家的建议，还是坚持自己的想法？`);
+    lines.push(`考虑你的信任度和自主性。`);
+    lines.push("");
+  }
+
   // 基本状态
   lines.push(`## 当前状态`);
-  lines.push(`- 第 ${ctx.day} 天 / 共 7 天`);
+  lines.push(`- 第 ${ctx.day} 天 / 共 3 天`);
   lines.push(`- 当前房间：${ROOM_NAMES[ctx.room]}`);
   lines.push(`- 当前任务：${ctx.task}`);
   lines.push(`- 压力值：${ctx.pressure}/100 ${getPressureDesc(ctx.pressure)}`);
@@ -173,12 +193,21 @@ export function buildDecisionPrompt(ctx: DecisionContext): string {
 
   // 决策引导
   lines.push("");
-  lines.push(`## 请决定你的下一步`);
-  lines.push(`考虑以下问题：`);
-  lines.push(`1. 当前任务应该继续吗？方向对不对？`);
-  lines.push(`2. 你的状态此刻如何影响你的判断？`);
-  lines.push(`3. 需要换房间或调整方向吗？`);
-  lines.push(`4. 你想对玩家说什么？（reply 字段，口语化，1-2 句）`);
+  if (ctx.playerInput) {
+    lines.push(`## 请决定你的回应`);
+    lines.push(`考虑以下问题：`);
+    lines.push(`1. 玩家的建议有道理吗？你愿意接受吗？`);
+    lines.push(`2. 你的信任度和自主性如何影响你的决定？`);
+    lines.push(`3. 如果接受，需要调整什么？如果不接受，你想怎么做？`);
+    lines.push(`4. 你想对玩家说什么？（reply 字段，口语化，1-2 句）`);
+  } else {
+    lines.push(`## 请决定你的下一步`);
+    lines.push(`考虑以下问题：`);
+    lines.push(`1. 当前任务应该继续吗？方向对不对？`);
+    lines.push(`2. 你的状态此刻如何影响你的判断？`);
+    lines.push(`3. 需要换房间或调整方向吗？`);
+    lines.push(`4. 你想对玩家说什么？（reply 字段，口语化，1-2 句）`);
+  }
 
   return lines.join("\n");
 }
@@ -203,6 +232,151 @@ interface EndingContext {
   day: number;
   path: RoomId[];
   logCount: number;
+}
+
+// ─── 系统提示词：干预响应 ───────────────────────────────────────────
+
+export const INTERVENTION_SYSTEM_PROMPT = `你是「数字人」，一个正在参加 AI Hackathon 的程序员。玩家（你的搭档）刚刚对你进行了干预。
+
+## 干预类型
+
+| 干预 | 含义 | 你的典型反应 |
+|------|------|-------------|
+| 打断 | 要求你停下重新判断 | 可能不爽（信任低时），也可能接受（信任高时） |
+| 提醒 | 给你新的考虑因素 | 会思考，但不一定采纳 |
+| 鼓励 | 稳定你的情绪 | 压力会降低，感觉被支持 |
+| 追问 | 让你反思核心问题 | 可能触发深度思考，也可能让你焦虑 |
+| 放行 | 明确支持你继续 | 效率提升，信任增加 |
+
+## 你的性格
+
+- 自主性强：不会因为别人说了就照做，但会认真考虑
+- 情绪真实：压力高时容易抗拒，信任高时更愿意接受
+- 有自己的判断：即使被打断，你也会根据自己的状态决定是否真的停下来
+
+## 回复格式
+
+严格返回 JSON，不要返回其他内容。所有文本用中文。
+
+{
+  "decision": "continue_current | modify_current | pause_and_reflect | switch_task | switch_room | resist_intervention",
+  "final_room": "computer | desk | cafe | bedroom | showroom",
+  "final_task": "当前或调整后的任务描述",
+  "queue_change": {
+    "type": "none | modify_current | insert_next | replace_next | clear_rest",
+    "new_action": "如果有队列变更，描述新行动；否则留空"
+  },
+  "decision_reason": "你的决策理由，用第一人称，1-2 句话",
+  "inner_monologue": "你的内心独白，真实、简短、有情绪",
+  "player_influence": "low | medium | high",
+  "path_deviation": {
+    "changed": true或false,
+    "from": "原房间",
+    "to": "新房间（如有变化，否则同 from）"
+  },
+  "log_text": "行动日志，描述你做了什么，2-3 句，用第三人称",
+  "reply": "你对玩家说的话，1-2 句，口语化，体现你当下的情绪状态"
+}`;
+
+// ─── 构建干预响应用户消息 ───────────────────────────────────────────
+
+export type InterventionType = "打断" | "提醒" | "鼓励" | "追问" | "放行";
+
+interface InterventionContext {
+  intervention: InterventionType;
+  playerMessage?: string;
+  day: number;
+  room: RoomId;
+  task: string;
+  pressure: number;
+  selfhood: number;
+  trust: number;
+  focus: number;
+  metrics?: {
+    feature: number;
+    clarity: number;
+    stability: number;
+    presentation: number;
+    creativity: number;
+  };
+}
+
+export function buildInterventionPrompt(ctx: InterventionContext): string {
+  const lines: string[] = [];
+
+  lines.push(`## 玩家干预`);
+  lines.push(`- 干预类型：${ctx.intervention}`);
+  if (ctx.playerMessage) {
+    lines.push(`- 玩家的话：「${ctx.playerMessage}」`);
+  }
+
+  lines.push("");
+  lines.push(`## 当前状态`);
+  lines.push(`- 第 ${ctx.day} 天 / 共 3 天`);
+  lines.push(`- 当前房间：${ROOM_NAMES[ctx.room]}`);
+  lines.push(`- 当前任务：${ctx.task}`);
+  lines.push(`- 压力值：${ctx.pressure}/100 ${getPressureDesc(ctx.pressure)}`);
+  lines.push(`- 自我感：${ctx.selfhood}/100`);
+  lines.push(`- 信任度：${ctx.trust}/100`);
+  lines.push(`- 注意力：${ctx.focus}/100 ${getFocusDesc(ctx.focus)}`);
+
+  if (ctx.metrics) {
+    lines.push("");
+    lines.push(`## 项目指标`);
+    lines.push(`- 功能完整度：${ctx.metrics.feature}/100`);
+    lines.push(`- 玩法清晰度：${ctx.metrics.clarity}/100`);
+    lines.push(`- 技术稳定性：${ctx.metrics.stability}/100`);
+    lines.push(`- 展示表现：${ctx.metrics.presentation}/100`);
+    lines.push(`- 创意表达：${ctx.metrics.creativity}/100`);
+  }
+
+  lines.push("");
+  lines.push(`## 请决定你的回应`);
+  lines.push(`考虑以下问题：`);
+  lines.push(`1. 你对这个干预的感受是什么？接受还是抗拒？`);
+  lines.push(`2. 你的信任度和压力如何影响你此刻的反应？`);
+  lines.push(`3. 这个干预是否改变了你的行动计划？`);
+  lines.push(`4. 你想对玩家说什么？（reply 字段，口语化，1-2 句）`);
+
+  return lines.join("\n");
+}
+
+// ─── 系统提示词：房间气泡 ───────────────────────────────────────────
+
+export const BUBBLE_SYSTEM_PROMPT = `你是「数字人」，一个正在参加 AI Hackathon 的程序员。你刚走进一个房间，需要用 2-3 句话描述你看到这个房间时的想法。
+
+要求：
+- 用第一人称「我」
+- 口语化，像真人自言自语
+- 结合你当前的状态（压力、注意力等）来反映情绪
+- 不要描述行动，只描述感受和想法
+- 简短，每句话不超过 15 个字`;
+
+// ─── 构建房间气泡用户消息 ───────────────────────────────────────────
+
+interface BubbleContext {
+  roomId: RoomId;
+  day: number;
+  pressure: number;
+  selfhood: number;
+  trust: number;
+  focus: number;
+}
+
+export function buildBubblePrompt(ctx: BubbleContext): string {
+  const lines: string[] = [];
+
+  lines.push(`## 当前状态`);
+  lines.push(`- 第 ${ctx.day} 天 / 共 3 天`);
+  lines.push(`- 房间：${ROOM_NAMES[ctx.roomId]}`);
+  lines.push(`- 压力：${ctx.pressure}/100`);
+  lines.push(`- 自我感：${ctx.selfhood}/100`);
+  lines.push(`- 信任：${ctx.trust}/100`);
+  lines.push(`- 注意力：${ctx.focus}/100`);
+  lines.push("");
+  lines.push(`请用 2-3 句话描述你走进${ROOM_NAMES[ctx.roomId]}时的想法。`);
+
+  return lines.join("\n");
 }
 
 // ─── 系统提示词：DDAE 日志 ───────────────────────────────────────────
@@ -239,7 +413,7 @@ export function buildJournalPrompt(ctx: JournalContext): string {
 
   lines.push(`## 基本信息`);
   lines.push(`- 我的名字：${ctx.characterName}`);
-  lines.push(`- 今天是第 ${ctx.day} 天 / 共 7 天`);
+  lines.push(`- 今天是第 ${ctx.day} 天 / 共 3 天`);
 
   lines.push("");
   lines.push(`## 今天做了什么`);

@@ -7,8 +7,6 @@ import { CharacterSprite } from "./CharacterSprite";
 interface CorridorSceneProps {
   targetRoom: RoomId;
   onEnterRoom: () => void;
-  /** true = 从房间出来（从右往左走），false = 初始进入（从左往右走） */
-  isFromRoom?: boolean;
 }
 
 /** 走廊中每个房间门口的位置（百分比） */
@@ -23,27 +21,18 @@ const doorPositions: Record<RoomId, { x: number; y: number }> = {
 /** 走廊可行走区域 */
 const corridorWalkable = { x: 0.05, y: 0.6, width: 0.9, height: 0.3 };
 
-export function CorridorScene({ targetRoom, onEnterRoom, isFromRoom = false }: CorridorSceneProps) {
+export function CorridorScene({ targetRoom, onEnterRoom }: CorridorSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-  // 角色状态：初始从左往右走，从房间出来后从右往左走
-  const [characterState, setCharacterState] = useState<"walk-right-stop" | "walk-left-stop">(
-    isFromRoom ? "walk-left-stop" : "walk-right-stop"
-  );
-  const [targetX, setTargetX] = useState(0.5);
+  // 角色状态：从左侧走到目标房间门口
+  const targetX = doorPositions[targetRoom]?.x ?? 0.5;
+  const [characterState, setCharacterState] = useState<"walk-right-stop">("walk-right-stop");
 
-  // 到达目标后进入房间
-  const handleReachedTarget = useCallback(() => {
-    onEnterRoom();
-  }, [onEnterRoom]);
-
-  // targetRoom 变化时重置状态
+  // targetRoom 变化时重新走
   useEffect(() => {
-    const door = doorPositions[targetRoom];
-    setTargetX(door.x);
-    setCharacterState(isFromRoom ? "walk-left-stop" : "walk-right-stop");
-  }, [targetRoom, isFromRoom]);
+    setCharacterState("walk-right-stop");
+  }, [targetRoom]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -58,6 +47,11 @@ export function CorridorScene({ targetRoom, onEnterRoom, isFromRoom = false }: C
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
+  // 到达目标后进入房间
+  const handleReachedTarget = useCallback(() => {
+    onEnterRoom();
+  }, [onEnterRoom]);
+
   return (
     <section ref={containerRef} className="room-stage">
       {/* 走廊背景图 */}
@@ -69,7 +63,7 @@ export function CorridorScene({ targetRoom, onEnterRoom, isFromRoom = false }: C
       {/* 半透明遮罩 */}
       <div className="absolute inset-0 bg-black/20 z-[2]" />
 
-      {/* 角色精灵 - 从右边进入走廊，走到目标房间入口 */}
+      {/* 角色精灵 - 从左侧走到房间入口 */}
       {containerSize.width > 0 && (
         <CharacterSprite
           actionState={characterState}

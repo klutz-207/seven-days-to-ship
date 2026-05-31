@@ -6,9 +6,10 @@ interface CharacterHudProps {
   character: CharacterState;
   metrics: ProjectMetrics;
   warnings: string[];
+  characterName?: string;
 }
 
-export function CharacterHud({ day, character, metrics, warnings }: CharacterHudProps) {
+export function CharacterHud({ day, character, metrics, warnings, characterName }: CharacterHudProps) {
   return (
     <aside className="scene-hud">
       <div className="scene-avatar" aria-label="数字人形象">
@@ -20,10 +21,10 @@ export function CharacterHud({ day, character, metrics, warnings }: CharacterHud
       </div>
       <div className="min-w-0">
         <div className="ui-font flex items-center justify-between gap-3 text-xs text-[var(--muted)]">
-          <span>Day {day} / 7</span>
+          <span>Day {day} / 3</span>
           <span className="font-bold text-[var(--accent)]">{calculateMainProgress(metrics)}%</span>
         </div>
-        <h2 className="mt-1 truncate text-2xl font-black">数字人</h2>
+        <h2 className="mt-1 truncate text-2xl font-black">{characterName || "数字人"}</h2>
         <div className="ui-font mt-3 grid grid-cols-2 gap-2 text-xs">
           <HudMetric label="压力" value={character.pressure} />
           <HudMetric label="自我感" value={character.selfhood} />

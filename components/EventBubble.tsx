@@ -6,10 +6,11 @@ interface EventBubbleProps {
   text: string;
   x: number;
   y: number;
+  isTyping?: boolean;
   onComplete?: () => void;
 }
 
-export default function EventBubble({ text, x, y, onComplete }: EventBubbleProps) {
+export default function EventBubble({ text, x, y, isTyping, onComplete }: EventBubbleProps) {
   const [phase, setPhase] = useState<"enter" | "visible" | "exit">("enter");
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function EventBubble({ text, x, y, onComplete }: EventBubbleProps
       }}
     >
       {text}
+      {isTyping && <span className="typing-cursor">|</span>}
       {/* 气泡小三角 */}
       <div
         style={{
@@ -106,6 +108,17 @@ export default function EventBubble({ text, x, y, onComplete }: EventBubbleProps
             opacity: 0;
             transform: translate(-50%, -100%) translateY(-8px);
           }
+        }
+        .typing-cursor {
+          display: inline-block;
+          animation: blink 0.7s infinite;
+          color: #666;
+          font-weight: bold;
+          margin-left: 1px;
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
         }
       `}</style>
     </div>

@@ -13,7 +13,9 @@ export type AiDecision =
   | "modify_current"
   | "pause_and_reflect"
   | "switch_task"
-  | "switch_room";
+  | "switch_room"
+  | "resist_intervention"
+  | "misinterpret";
 
 export interface ProjectMetrics {
   feature: number;
@@ -41,6 +43,7 @@ export interface ActionNode {
   expectedGain: Partial<ProjectMetrics>;
   expectedCost: Partial<CharacterState>;
   status: ActionStatus;
+  inspiration?: string;
 }
 
 export interface ActionLogEntry {
@@ -50,16 +53,25 @@ export interface ActionLogEntry {
   room?: RoomId;
 }
 
+export interface ProjectConcept {
+  name: string;
+  pitch: string;
+  coreLoop: string;
+}
+
 export interface GameState {
   day: number;
   currentActionIndex: number;
   actions: ActionNode[];
+  project: ProjectConcept;
   metrics: ProjectMetrics;
   character: CharacterState;
+  characterName: string;
   path: RoomId[];
   logs: ActionLogEntry[];
   completedOriginalActions: number;
   isEnded: boolean;
+  inspirationSet: string[];
 }
 
 export interface DecisionResponse {
@@ -67,11 +79,12 @@ export interface DecisionResponse {
   final_room: RoomId;
   final_task: string;
   queue_change: {
-    type: "none" | "modify_current" | "insert_next" | "replace_next" | "clear_rest";
+    type: DecisionQueueChangeType;
     new_action: string;
   };
   decision_reason: string;
   inner_monologue: string;
+  player_influence: "low" | "medium" | "high";
   path_deviation: {
     changed: boolean;
     from: RoomId;
@@ -79,4 +92,12 @@ export interface DecisionResponse {
   };
   log_text: string;
   reply: string;
+  inspiration?: string;  // 灵感内容（玩家触发）
 }
+
+export type DecisionQueueChangeType =
+  | "none"
+  | "modify_current"
+  | "insert_next"
+  | "replace_next"
+  | "clear_rest";

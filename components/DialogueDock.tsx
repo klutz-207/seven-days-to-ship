@@ -10,8 +10,7 @@ interface DialogueDockProps {
 // 建议分类
 const SUGGESTION_CATEGORIES = [
   {
-    label: "鞭笞",
-    icon: "🔥",
+    label: "鞭笞他",
     suggestions: [
       "你在干嘛？",
       "这方向不对",
@@ -22,8 +21,7 @@ const SUGGESTION_CATEGORIES = [
     ],
   },
   {
-    label: "提醒",
-    icon: "💡",
+    label: "提醒他",
     suggestions: [
       "想想核心功能",
       "简化一下",
@@ -34,8 +32,7 @@ const SUGGESTION_CATEGORIES = [
     ],
   },
   {
-    label: "鼓励",
-    icon: "💪",
+    label: "鼓励他",
     suggestions: [
       "加油",
       "快了快了",
@@ -46,8 +43,7 @@ const SUGGESTION_CATEGORIES = [
     ],
   },
   {
-    label: "夸赞",
-    icon: "✨",
+    label: "夸赞他",
     suggestions: [
       "这想法不错",
       "这段代码写得好",
@@ -91,8 +87,7 @@ export function DialogueDock({ onSubmit, disabled }: DialogueDockProps) {
             disabled={disabled}
             className="dialogue-suggest-btn"
           >
-            <span className="dialogue-suggest-icon">{cat.icon}</span>
-            <span className="dialogue-suggest-label">{cat.label}</span>
+            {cat.label}
           </button>
         ))}
       </div>

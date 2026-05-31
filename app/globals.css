@@ -183,15 +183,6 @@ textarea {
   cursor: not-allowed;
 }
 
-.dialogue-suggest-icon {
-  font-size: 0.875rem;
-}
-
-.dialogue-suggest-label {
-  font-family: var(--ui-font);
-  font-weight: bold;
-}
-
 .dialogue-input-wrapper {
   position: relative;
   display: flex;

@@ -4,30 +4,24 @@ import { useEffect, useRef, useState } from "react";
 import { SpriteAnimator } from "./SpriteAnimator";
 
 type Direction = "down" | "up" | "left" | "right";
-type ActionState = "idle" | "walk" | "think";
+type ActionState = "idle" | "walk" | "walk-to-center";
 
 interface Position {
   x: number;
   y: number;
 }
 
-/** 碰撞区域（矩形） */
-interface CollisionRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 interface CharacterSpriteProps {
   actionState: ActionState;
   direction?: Direction;
-  targetPosition?: Position;
-  clickTarget?: Position;
   containerWidth: number;
   containerHeight: number;
-  /** 可行走区域列表 */
-  walkableAreas?: CollisionRect[];
+  /** 可行走区域（相对于容器的百分比） */
+  walkableArea?: { x: number; y: number; width: number; height: number };
+  /** 角色位置变化回调，用于外部定位（如气泡） */
+  onPositionChange?: (pos: { x: number; y: number }) => void;
+  /** 角色到达中间位置回调（walk-to-center 专用） */
+  onReachedCenter?: () => void;
 }
 
 // 精灵图帧定义
@@ -64,186 +58,167 @@ const SPRITE_FRAMES: Record<ActionState, Record<Direction, string[]>> = {
       "/characters/programmer/walk-right-04.png",
     ],
   },
-  think: {
+  "walk-to-center": {
     down: ["/characters/programmer/idle-down-01.png"],
     up: ["/characters/programmer/idle-up-01.png"],
-    left: ["/characters/programmer/idle-left-01.png"],
-    right: ["/characters/programmer/idle-right-01.png"],
+    left: [
+      "/characters/programmer/walk-left-01.png",
+      "/characters/programmer/walk-left-02.png",
+      "/characters/programmer/walk-left-03.png",
+      "/characters/programmer/walk-left-04.png",
+    ],
+    right: [
+      "/characters/programmer/walk-right-01.png",
+      "/characters/programmer/walk-right-02.png",
+      "/characters/programmer/walk-right-03.png",
+      "/characters/programmer/walk-right-04.png",
+    ],
   },
 };
 
 const WALK_SPEED = 3;
 
-/** 检查点是否在可行走区域内 */
-function isWalkable(pos: Position, areas: CollisionRect[]): boolean {
-  if (areas.length === 0) return true; // 没有限制则全部可走
-  return areas.some(
-    (area) =>
-      pos.x >= area.x &&
-      pos.x <= area.x + area.width &&
-      pos.y >= area.y &&
-      pos.y <= area.y + area.height
-  );
-}
-
-/** 将位置限制在可行走区域内 */
-function clampToWalkable(pos: Position, areas: CollisionRect[]): Position {
-  if (areas.length === 0) return pos;
-
-  // 找到最近的可行走点
-  let closest = pos;
-  let minDist = Infinity;
-
-  for (const area of areas) {
-    const clampedX = Math.max(area.x, Math.min(area.x + area.width, pos.x));
-    const clampedY = Math.max(area.y, Math.min(area.y + area.height, pos.y));
-    const dist = Math.sqrt((clampedX - pos.x) ** 2 + (clampedY - pos.y) ** 2);
-
-    if (dist < minDist) {
-      minDist = dist;
-      closest = { x: clampedX, y: clampedY };
-    }
-  }
-
-  return closest;
-}
-
 export function CharacterSprite({
   actionState,
   direction = "down",
-  targetPosition,
-  clickTarget,
   containerWidth,
   containerHeight,
-  walkableAreas = [],
+  walkableArea,
+  onPositionChange,
+  onReachedCenter,
 }: CharacterSpriteProps) {
-  // 初始位置在容器底部中央（脚部位置）
   const [position, setPosition] = useState<Position>({
-    x: containerWidth / 2,
+    x: containerWidth * 0.1,
     y: containerHeight * 0.75,
   });
   const [currentDirection, setCurrentDirection] = useState<Direction>(direction);
-  const animationRef = useRef<number | null>(null);
-  const [isFollowingClick, setIsFollowingClick] = useState(false);
+  const walkRef = useRef<{ targetX: number; direction: Direction } | null>(null);
+  const animFrameRef = useRef<number | null>(null);
 
-  // 双击跟随走动
+  // 向外部报告角色位置
   useEffect(() => {
-    if (!clickTarget) return;
+    onPositionChange?.(position);
+  }, [position, onPositionChange]);
 
-    // 将目标限制在可行走区域
-    const clampedTarget = clampToWalkable(clickTarget, walkableAreas);
-    setIsFollowingClick(true);
-
-    const walk = () => {
-      setPosition((prev) => {
-        const dx = clampedTarget.x - prev.x;
-        const dy = clampedTarget.y - prev.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < WALK_SPEED) {
-          setIsFollowingClick(false);
-          return clampedTarget;
-        }
-
-        const vx = (dx / distance) * WALK_SPEED;
-        const vy = (dy / distance) * WALK_SPEED;
-
-        // 更新方向
-        const angle = Math.atan2(dy, dx);
-        if (angle > -Math.PI / 4 && angle <= Math.PI / 4) {
-          setCurrentDirection("right");
-        } else if (angle > Math.PI / 4 && angle <= (3 * Math.PI) / 4) {
-          setCurrentDirection("down");
-        } else if (angle > (-3 * Math.PI) / 4 && angle <= -Math.PI / 4) {
-          setCurrentDirection("up");
-        } else {
-          setCurrentDirection("left");
-        }
-
-        const newPos = { x: prev.x + vx, y: prev.y + vy };
-        // 限制在可行走区域
-        return clampToWalkable(newPos, walkableAreas);
-      });
-
-      animationRef.current = requestAnimationFrame(walk);
+  // 计算可行走边界
+  const getBounds = () => {
+    if (!walkableArea || containerWidth === 0) {
+      return {
+        minX: containerWidth * 0.1,
+        maxX: containerWidth * 0.9,
+        minY: containerHeight * 0.6,
+        maxY: containerHeight * 0.85,
+      };
+    }
+    return {
+      minX: walkableArea.x * containerWidth,
+      maxX: (walkableArea.x + walkableArea.width) * containerWidth,
+      minY: walkableArea.y * containerHeight,
+      maxY: (walkableArea.y + walkableArea.height) * containerHeight,
     };
+  };
 
-    animationRef.current = requestAnimationFrame(walk);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [clickTarget, walkableAreas]);
-
-  // 自动走动（进入房间）
+  // walk 模式：自动左右走动（用于走廊等场景）
   useEffect(() => {
-    if (isFollowingClick || actionState !== "walk" || !targetPosition) {
-      if (!isFollowingClick && animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-      }
+    if (actionState !== "walk") {
+      walkRef.current = null;
       return;
     }
 
-    const clampedTarget = clampToWalkable(targetPosition, walkableAreas);
+    const bounds = getBounds();
+    const midY = (bounds.minY + bounds.maxY) / 2;
+
+    // 初始化位置
+    setPosition({ x: bounds.minX + 50, y: midY });
+    walkRef.current = { targetX: bounds.maxX - 50, direction: "right" };
+    setCurrentDirection("right");
 
     const walk = () => {
       setPosition((prev) => {
-        const dx = clampedTarget.x - prev.x;
-        const dy = clampedTarget.y - prev.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const walkState = walkRef.current;
+        if (!walkState) return prev;
 
-        if (distance < WALK_SPEED) {
-          return clampedTarget;
+        const dx = walkState.targetX - prev.x;
+        const moveX = dx > 0 ? WALK_SPEED : -WALK_SPEED;
+
+        // 到达目标，反转方向
+        if (Math.abs(dx) < WALK_SPEED * 2) {
+          const newTarget = walkState.targetX === bounds.maxX - 50 ? bounds.minX + 50 : bounds.maxX - 50;
+          const newDir = newTarget > prev.x ? "right" : "left";
+          walkRef.current = { targetX: newTarget, direction: newDir };
+          setCurrentDirection(newDir);
+          return prev;
         }
 
-        const vx = (dx / distance) * WALK_SPEED;
-        const vy = (dy / distance) * WALK_SPEED;
-
-        if (Math.abs(dx) > Math.abs(dy)) {
-          setCurrentDirection(dx > 0 ? "right" : "left");
-        } else {
-          setCurrentDirection(dy > 0 ? "down" : "up");
-        }
-
-        const newPos = { x: prev.x + vx, y: prev.y + vy };
-        return clampToWalkable(newPos, walkableAreas);
+        return { x: prev.x + moveX, y: prev.y };
       });
 
-      animationRef.current = requestAnimationFrame(walk);
+      animFrameRef.current = requestAnimationFrame(walk);
     };
 
-    animationRef.current = requestAnimationFrame(walk);
+    animFrameRef.current = requestAnimationFrame(walk);
 
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [actionState, targetPosition, isFollowingClick, walkableAreas]);
+  }, [actionState, containerWidth, containerHeight, walkableArea]);
 
-  // 随机走动（思考状态）
+  // walk-to-center 模式：从左侧 (0.1) 走到右侧 (0.9) 后停下
   useEffect(() => {
-    if (actionState !== "think") return;
+    if (actionState !== "walk-to-center") {
+      walkRef.current = null;
+      return;
+    }
 
-    const thinkInterval = setInterval(() => {
-      const randomDir: Direction = ["left", "right"][Math.floor(Math.random() * 2)] as Direction;
-      setCurrentDirection(randomDir);
+    const bounds = getBounds();
+    const midY = (bounds.minY + bounds.maxY) / 2;
 
-      const offset = randomDir === "left" ? -50 : 50;
+    // 初始化位置：从左侧开始
+    setPosition({ x: bounds.minX, y: midY });
+    walkRef.current = { targetX: bounds.maxX, direction: "right" };
+    setCurrentDirection("right");
+
+    let reached = false;
+
+    const walk = () => {
       setPosition((prev) => {
-        const newPos = {
-          x: prev.x + offset,
-          y: prev.y + (Math.random() - 0.5) * 20,
-        };
-        return clampToWalkable(newPos, walkableAreas);
-      });
-    }, 2000);
+        const walkState = walkRef.current;
+        if (!walkState || reached) return prev;
 
-    return () => clearInterval(thinkInterval);
-  }, [actionState, walkableAreas]);
+        const dx = walkState.targetX - prev.x;
+
+        // 到达右侧终点
+        if (Math.abs(dx) < WALK_SPEED * 2) {
+          reached = true;
+          // 通知外部已走完全程
+          setTimeout(() => onReachedCenter?.(), 0);
+          return { x: walkState.targetX, y: prev.y };
+        }
+
+        const moveX = dx > 0 ? WALK_SPEED : -WALK_SPEED;
+        return { x: prev.x + moveX, y: prev.y };
+      });
+
+      if (!reached) {
+        animFrameRef.current = requestAnimationFrame(walk);
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(walk);
+
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, [actionState, containerWidth, containerHeight, walkableArea, onReachedCenter]);
+
+  // 更新方向
+  useEffect(() => {
+    setCurrentDirection(direction);
+  }, [direction]);
 
   const frames = SPRITE_FRAMES[actionState][currentDirection];
 
@@ -251,26 +226,23 @@ export function CharacterSprite({
   const width = 128 * scale;
   const height = 128 * scale;
 
-  // Y坐标决定层级：Y越大越靠前
   const zIndex = Math.floor(position.y);
 
   return (
     <div
       className="absolute"
       style={{
-        // 脚部锚点定位：x居中，y在底部
         left: position.x - width / 2,
         top: position.y - height,
         width,
         height,
         zIndex,
-        // 像素风格渲染
         imageRendering: "pixelated",
       }}
     >
       <SpriteAnimator
         frames={frames}
-        fps={actionState === "walk" ? 10 : 4}
+        fps={actionState === "idle" ? 4 : 10}
         loop={true}
         className="h-full w-full"
       />

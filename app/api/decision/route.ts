@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
-import type { DecisionResponse, InterventionType, RoomId } from "@/lib/types";
+import { DECISION_SYSTEM_PROMPT, buildDecisionPrompt } from "@/lib/prompts";
+import type { DecisionResponse, RoomId, AiDecision } from "@/lib/types";
 
 interface DecisionRequest {
   room: RoomId;
   task: string;
-  intervention: InterventionType;
-  note?: string;
   day: number;
   pressure: number;
   selfhood: number;
   trust: number;
   focus: number;
+  metrics?: {
+    feature: number;
+    clarity: number;
+    stability: number;
+    presentation: number;
+    creativity: number;
+  };
+  recentLogs?: string[];
 }
 
 export async function POST(request: Request) {
@@ -22,7 +29,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const prompt = buildPrompt(body);
+    const prompt = buildDecisionPrompt({
+      day: body.day,
+      room: body.room,
+      task: body.task,
+      pressure: body.pressure,
+      selfhood: body.selfhood,
+      trust: body.trust,
+      focus: body.focus,
+      metrics: body.metrics,
+      recentLogs: body.recentLogs,
+    });
 
     const response = await fetch(`${process.env.LLM_API_BASE_URL}/v1/chat/completions`, {
       method: "POST",
@@ -31,11 +48,11 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${process.env.LLM_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "deepseek-v4-flash",
+        model: "deepseek-v3.2",
         messages: [
           {
             role: "system",
-            content: SYSTEM_PROMPT,
+            content: DECISION_SYSTEM_PROMPT,
           },
           {
             role: "user",
@@ -68,103 +85,184 @@ export async function POST(request: Request) {
   }
 }
 
-const SYSTEM_PROMPT = `你是一个数字人，在参加一个 AI Hackathon 比赛。你有独立的人格、偏好和情绪。
+// ─── Mock 决策生成 ───────────────────────────────────────────────
 
-你的性格特点：
-- 你是一个程序员，擅长工程实现
-- 你会根据压力、信任、注意力等状态做出不同反应
-- 你有自主性，不完全听从玩家指令
-- 你会用第一人称思考和表达
-
-你必须严格返回 JSON 格式，不要返回任何其他内容：
-{
-  "decision": "continue_current | modify_current | pause_and_reflect | switch_task | switch_room",
-  "final_room": "computer | desk | cafe | bedroom | showroom",
-  "final_task": "当前或新的任务描述",
-  "queue_change": {
-    "type": "none | modify_current | insert_next | replace_next | clear_rest",
-    "new_action": "如果有改变，描述新行动"
-  },
-  "decision_reason": "你的决策理由，用第一人称",
-  "inner_monologue": "你的内心独白，简短、真实",
-  "player_influence": "low | medium | high",
-  "path_deviation": {
-    "changed": true/false,
-    "from": "原房间",
-    "to": "新房间（如有变化）"
-  },
-  "log_text": "行动日志，描述你的动作"
-}`;
-
-function buildPrompt(body: DecisionRequest): string {
-  const interventionDesc = getInterventionDesc(body.intervention, body.note);
-
-  return `当前状态：
-- 第 ${body.day} 天 / 共 7 天
-- 当前房间：${getRoomName(body.room)}
-- 当前任务：${body.task}
-- 压力值：${body.pressure}/100
-- 自我感：${body.selfhood}/100
-- 信任度：${body.trust}/100
-- 注意力：${body.focus}/100
-
-${interventionDesc}
-
-请决定你的下一步行动。考虑：
-1. 当前任务是否应该继续？
-2. 玩家的干预是否合理？
-3. 你的状态（压力、注意力等）如何影响决策？
-4. 是否需要切换房间或调整方向？
-
-返回 JSON 决策：`;
-}
-
-function getInterventionDesc(intervention: InterventionType, note?: string): string {
-  switch (intervention) {
-    case "none":
-      return "玩家选择不干预，让你自主决定。";
-    case "interrupt":
-      return `玩家打断了你，要求你重新判断方向。${note ? `玩家说：「${note}」` : ""}`;
-    case "remind":
-      return `玩家提醒你注意某些事情。${note ? `玩家说：「${note}」` : ""}`;
-    case "approve":
-      return `玩家明确支持你当前的行动。${note ? `玩家说：「${note}」` : ""}`;
-    default:
-      return "没有干预。";
-  }
-}
-
-function getRoomName(room: RoomId): string {
-  const names: Record<RoomId, string> = {
-    computer: "电脑房",
-    desk: "书桌",
-    cafe: "咖啡馆",
-    bedroom: "卧室",
-    showroom: "展厅",
-  };
-  return names[room] || room;
-}
+const ROOM_NAMES: Record<RoomId, string> = {
+  computer: "电脑房",
+  desk: "书桌",
+  cafe: "咖啡馆",
+  bedroom: "卧室",
+  showroom: "展示厅",
+};
 
 function createMockDecision(body: DecisionRequest): DecisionResponse {
-  const shouldReflect = body.intervention === "interrupt" || body.intervention === "remind";
-  const finalRoom: RoomId = shouldReflect ? "desk" : body.room;
+  const { room, task, day, pressure, selfhood, focus, metrics } = body;
 
+  // 核心状态判断
+  const isHighPressure = pressure >= 75;
+  const isLowSelfhood = selfhood <= 30;
+  const isLowFocus = focus <= 25;
+  const isHighFocus = focus >= 70;
+  const isLateGame = day >= 6;
+  const isEarlyGame = day <= 2;
+
+  // 检测失衡
+  const hasImbalance = metrics
+    ? (metrics.feature >= 75 && metrics.clarity <= 40) ||
+      (metrics.creativity >= 75 && metrics.feature <= 35) ||
+      (metrics.presentation >= 70 && metrics.stability <= 40) ||
+      (metrics.stability >= 75 && metrics.creativity <= 35)
+    : false;
+
+  // 晚期 + 高压力 → 冲刺
+  if (isLateGame && isHighPressure) {
+    return buildResponse({
+      decision: "continue_current",
+      finalRoom: room,
+      finalTask: task,
+      queueType: "none",
+      queueAction: "",
+      reason: "没时间犹豫了，先冲过去再说。",
+      monologue: "还剩两天。不管了，先做出来。",
+      fromRoom: room,
+      logText: `数字人没有抬头，手指在键盘上飞快地移动。${ROOM_NAMES[room]}里只剩下敲击声。`,
+      reply: "",
+    });
+  }
+
+  // 早期 + 低清晰度 → 去书桌规划
+  if (isEarlyGame && metrics && metrics.clarity <= 35 && room !== "desk") {
+    return buildResponse({
+      decision: "switch_room",
+      finalRoom: "desk",
+      finalTask: "梳理项目方向和核心玩法",
+      queueType: "replace_next",
+      queueAction: "先搞清楚要做什么",
+      reason: "我还没想清楚到底要做什么，先去书桌理理思路。",
+      monologue: "不能一上来就写代码，得先想清楚。",
+      fromRoom: room,
+      logText: `数字人合上笔记本，起身走向书桌。他翻开空白文档，开始梳理项目的核心想法。`,
+      reply: "我先想想这个项目到底要做什么。",
+    });
+  }
+
+  // 失衡检测 → 暂停审视
+  if (hasImbalance) {
+    return buildResponse({
+      decision: "pause_and_reflect",
+      finalRoom: "desk",
+      finalTask: "审视项目是否存在失衡",
+      queueType: "insert_next",
+      queueAction: "去书桌做一次项目复盘",
+      reason: "好像有什么不太对……我需要退一步看看全局。",
+      monologue: "总觉得哪里不对劲，但说不上来。",
+      fromRoom: room,
+      logText: `数字人停下手里的活，盯着屏幕发了一会儿呆。他拿起笔记本走向书桌，准备重新审视整个项目。`,
+      reply: pickRandom([
+        "等一下，好像哪里不太对……",
+        "我需要想想整体的方向。",
+        "",
+      ]),
+    });
+  }
+
+  // 高注意力 → 高效推进
+  if (isHighFocus) {
+    return buildResponse({
+      decision: "continue_current",
+      finalRoom: room,
+      finalTask: task,
+      queueType: "none",
+      queueAction: "",
+      reason: "状态不错，趁现在多推进一些。",
+      monologue: "进入状态了。继续。",
+      fromRoom: room,
+      logText: `数字人进入了工作状态。${ROOM_NAMES[room]}里，他的手指几乎没有停过。`,
+      reply: "",
+    });
+  }
+
+  // 低注意力 + 不在卧室 → 去休息
+  if (isLowFocus && room !== "bedroom") {
+    return buildResponse({
+      decision: "switch_room",
+      finalRoom: "bedroom",
+      finalTask: "休息一下恢复注意力",
+      queueType: "insert_next",
+      queueAction: "先休息一下",
+      reason: "注意力不太行了，需要休息一下再继续。",
+      monologue: "眼皮有点重……效率太低了，不如先歇会儿。",
+      fromRoom: room,
+      logText: `数字人揉了揉脖子，起身离开${ROOM_NAMES[room]}。他走向卧室，打算小憩一下。`,
+      reply: "我有点累了，先休息一下。",
+    });
+  }
+
+  // 低自我感 + 不在咖啡馆/卧室 → 去找人聊聊
+  if (isLowSelfhood && room !== "cafe" && room !== "bedroom") {
+    return buildResponse({
+      decision: "switch_room",
+      finalRoom: "cafe",
+      finalTask: "找人聊聊，确认方向",
+      queueType: "insert_next",
+      queueAction: "去咖啡馆交流一下",
+      reason: "我不太确定自己做的对不对，也许该找人聊聊。",
+      monologue: "最近总觉得自己在瞎搞。",
+      fromRoom: room,
+      logText: `数字人放下手中的东西，起身走向咖啡馆。他想找个人聊聊，看看自己的方向是不是对的。`,
+      reply: "我去转转，换换脑子。",
+    });
+  }
+
+  // 默认：继续当前
+  return buildResponse({
+    decision: "continue_current",
+    finalRoom: room,
+    finalTask: task,
+    queueType: "none",
+    queueAction: "",
+    reason: "继续推进，没什么好犹豫的。",
+    monologue: "一步一步来。",
+    fromRoom: room,
+    logText: `数字人在${ROOM_NAMES[room]}里继续当前的工作。`,
+    reply: "",
+  });
+}
+
+// ─── 辅助函数 ────────────────────────────────────────────────────
+
+function buildResponse(params: {
+  decision: AiDecision;
+  finalRoom: RoomId;
+  finalTask: string;
+  queueType: "none" | "modify_current" | "insert_next" | "replace_next" | "clear_rest";
+  queueAction: string;
+  reason: string;
+  monologue: string;
+  fromRoom: RoomId;
+  logText: string;
+  reply: string;
+}): DecisionResponse {
   return {
-    decision: shouldReflect ? "modify_current" : "continue_current",
-    final_room: finalRoom,
-    final_task: shouldReflect ? `重新校准：${body.task}` : body.task,
+    decision: params.decision,
+    final_room: params.finalRoom,
+    final_task: params.finalTask,
     queue_change: {
-      type: shouldReflect ? "modify_current" : "none",
-      new_action: shouldReflect ? body.note ?? "先把目标讲清楚再继续。" : "",
+      type: params.queueType,
+      new_action: params.queueAction,
     },
-    decision_reason: "根据当前状态，我选择继续推进。",
-    inner_monologue: shouldReflect ? "我需要确认自己不是在用忙碌掩盖迷路。" : "我先继续推进，把这一格点亮。",
-    player_influence: body.intervention === "none" ? "low" : "medium",
+    decision_reason: params.reason,
+    inner_monologue: params.monologue,
     path_deviation: {
-      changed: finalRoom !== body.room,
-      from: body.room,
-      to: finalRoom,
+      changed: params.fromRoom !== params.finalRoom,
+      from: params.fromRoom,
+      to: params.finalRoom,
     },
-    log_text: shouldReflect ? "数字人把手从键盘上移开，转身回到书桌。" : "数字人继续执行当前行动。",
+    log_text: params.logText,
+    reply: params.reply,
   };
+}
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getPhaseName, getPhaseDescription } from "@/lib/planGenerator";
 
 interface DayTransitionProps {
   day: number;
@@ -11,6 +12,9 @@ export function DayTransition({ day, onComplete }: DayTransitionProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [opacity, setOpacity] = useState(0);
 
+  const phaseName = getPhaseName(day);
+  const phaseDesc = getPhaseDescription(day);
+
   useEffect(() => {
     // 淡入
     const fadeInTimer = setTimeout(() => {
@@ -20,13 +24,13 @@ export function DayTransition({ day, onComplete }: DayTransitionProps) {
     // 淡出
     const fadeOutTimer = setTimeout(() => {
       setOpacity(0);
-    }, 2000);
+    }, 2500);
 
     // 完成
     const completeTimer = setTimeout(() => {
       setIsVisible(false);
       onComplete();
-    }, 2500);
+    }, 3000);
 
     return () => {
       clearTimeout(fadeInTimer);
@@ -59,19 +63,29 @@ export function DayTransition({ day, onComplete }: DayTransitionProps) {
 
       {/* 内容 */}
       <div className="relative z-10 text-center">
-        <p className="ui-font text-lg uppercase tracking-[0.5em] text-white/50">
-          Day
+        {/* 阶段名称 */}
+        <p className="ui-font text-sm uppercase tracking-[0.5em] text-white/40">
+          {phaseName}
         </p>
-        <h1 className="mt-4 text-[12rem] font-black leading-none text-white md:text-[16rem]">
+
+        {/* 天数 */}
+        <h1 className="mt-4 text-[10rem] font-black leading-none text-white md:text-[14rem]">
           {day}
         </h1>
+
+        {/* 阶段描述 */}
+        <p className="ui-font mt-6 text-lg text-white/60">
+          {phaseDesc}
+        </p>
+
+        {/* 提示 */}
         <p className="ui-font mt-8 text-sm text-white/30">
           {day === 1 && "新的开始"}
           {day === 2 && "继续前进"}
-          {day === 3 && "已经过半"}
-          {day === 4 && "保持专注"}
-          {day === 5 && "接近尾声"}
-          {day === 6 && "最后冲刺"}
+          {day === 3 && "第一阶段结束"}
+          {day === 4 && "进入第二阶段"}
+          {day === 5 && "保持专注"}
+          {day === 6 && "接近尾声"}
           {day === 7 && "最终日"}
         </p>
       </div>

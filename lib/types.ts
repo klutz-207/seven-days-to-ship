@@ -1,7 +1,5 @@
 export type RoomId = "computer" | "desk" | "cafe" | "bedroom" | "showroom";
 
-export type InterventionType = "none" | "interrupt" | "remind" | "approve";
-
 export type ActionStatus =
   | "pending"
   | "running"
@@ -15,9 +13,7 @@ export type AiDecision =
   | "modify_current"
   | "pause_and_reflect"
   | "switch_task"
-  | "switch_room"
-  | "resist_intervention"
-  | "misinterpret";
+  | "switch_room";
 
 export interface ProjectMetrics {
   feature: number;
@@ -62,7 +58,6 @@ export interface GameState {
   character: CharacterState;
   path: RoomId[];
   logs: ActionLogEntry[];
-  interventionCount: number;
   completedOriginalActions: number;
   isEnded: boolean;
 }
@@ -77,11 +72,11 @@ export interface DecisionResponse {
   };
   decision_reason: string;
   inner_monologue: string;
-  player_influence: "low" | "medium" | "high";
   path_deviation: {
     changed: boolean;
     from: RoomId;
     to: RoomId;
   };
   log_text: string;
+  reply: string;
 }

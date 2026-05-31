@@ -5,9 +5,6 @@ export function judgeEnding(state: GameState) {
   const progress = calculateMainProgress(state.metrics);
   const { metrics, character } = state;
 
-  if (state.interventionCount >= 8 && character.selfhood <= 35 && character.focus <= 35) {
-    return "被打断的人";
-  }
   if (metrics.presentation >= 70 && metrics.stability <= 40) {
     return "演示前一秒崩掉的梦";
   }

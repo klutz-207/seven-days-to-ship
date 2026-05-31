@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { rooms } from "@/lib/rooms";
 import type { ActionLogEntry, ActionNode, RoomId } from "@/lib/types";
 import { CharacterSprite } from "./CharacterSprite";
+import EventBubble from "./EventBubble";
 
 interface RoomStageProps {
   action?: ActionNode;
   path: RoomId[];
   latestLog?: ActionLogEntry;
+  bubbleText?: string;
+  /** 气泡结束后通知父组件，用于驱动自动切换到下一个房间 */
+  onEventComplete?: () => void;
 }
 
 const roomBackgrounds: Record<RoomId, string> = {
@@ -19,27 +23,39 @@ const roomBackgrounds: Record<RoomId, string> = {
   showroom: "/rooms/showroom-room.png",
 };
 
-const roomFloorAreas: Record<RoomId, Array<{ x: number; y: number; width: number; height: number }>> = {
-  computer: [{ x: 0.1, y: 0.6, width: 0.8, height: 0.3 }],
-  desk: [{ x: 0.1, y: 0.55, width: 0.8, height: 0.35 }],
-  cafe: [{ x: 0.05, y: 0.6, width: 0.9, height: 0.3 }],
-  bedroom: [{ x: 0.1, y: 0.6, width: 0.8, height: 0.3 }],
-  showroom: [{ x: 0.15, y: 0.55, width: 0.7, height: 0.35 }],
+/** 每个房间的可行走地板区域（百分比） */
+const roomFloorAreas: Record<RoomId, { x: number; y: number; width: number; height: number }> = {
+  computer: { x: 0.1, y: 0.6, width: 0.8, height: 0.25 },
+  desk: { x: 0.1, y: 0.55, width: 0.8, height: 0.3 },
+  cafe: { x: 0.05, y: 0.6, width: 0.9, height: 0.25 },
+  bedroom: { x: 0.1, y: 0.6, width: 0.8, height: 0.25 },
+  showroom: { x: 0.15, y: 0.55, width: 0.7, height: 0.3 },
 };
 
-const roomEntryPositions: Record<RoomId, { x: number; y: number }> = {
-  computer: { x: 0.2, y: 0.8 },
-  desk: { x: 0.5, y: 0.8 },
-  cafe: { x: 0.3, y: 0.8 },
-  bedroom: { x: 0.6, y: 0.8 },
-  showroom: { x: 0.5, y: 0.75 },
-};
-
-export function RoomStage({ action, path, latestLog }: RoomStageProps) {
+export function RoomStage({ action, path, latestLog, bubbleText, onEventComplete }: RoomStageProps) {
   const roomId = action?.room ?? "desk";
   const room = rooms[roomId];
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [characterPos, setCharacterPos] = useState({ x: 0, y: 0 });
+  const [visibleBubble, setVisibleBubble] = useState<string | undefined>();
+
+  // bubbleText 变化时（用户提交干预）覆盖当前气泡
+  useEffect(() => {
+    if (bubbleText) {
+      setVisibleBubble(bubbleText);
+    }
+  }, [bubbleText]);
+
+  // 气泡结束后通知父组件
+  const handleBubbleComplete = useCallback(() => {
+    setVisibleBubble(undefined);
+    onEventComplete?.();
+  }, [onEventComplete]);
+
+  const handleCharacterPosition = useCallback((pos: { x: number; y: number }) => {
+    setCharacterPos(pos);
+  }, []);
 
   useEffect(() => {
     const updateSize = () => {
@@ -54,79 +70,31 @@ export function RoomStage({ action, path, latestLog }: RoomStageProps) {
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  const [characterState, setCharacterState] = useState<"idle" | "walk" | "think">("idle");
-  const [characterDirection, setCharacterDirection] = useState<"down" | "up" | "left" | "right">("down");
-  const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | undefined>();
-  const [clickTarget, setClickTarget] = useState<{ x: number; y: number } | undefined>();
+  // 角色状态：进入房间时从左走到右，走完后停下
+  const [characterState, setCharacterState] = useState<"idle" | "walk-to-center">("walk-to-center");
 
-  const walkableAreas = containerSize.width > 0
-    ? roomFloorAreas[roomId].map((area) => ({
-        x: area.x * containerSize.width,
-        y: area.y * containerSize.height,
-        width: area.width * containerSize.width,
-        height: area.height * containerSize.height,
-      }))
-    : [];
-
+  // action 变化时重新走入场，清除旧气泡（气泡在走完后由 handleReachedCenter 显示）
   useEffect(() => {
-    if (!containerSize.width) return;
-
-    const entry = roomEntryPositions[roomId];
-    const targetX = entry.x * containerSize.width;
-    const targetY = entry.y * containerSize.height;
-
-    setCharacterState("walk");
-    setCharacterDirection("up");
-    setTargetPosition({ x: targetX, y: targetY });
-
-    const walkDuration = 1500;
-    const timer = setTimeout(() => {
+    if (!action || action.progress >= 100) {
       setCharacterState("idle");
-      setCharacterDirection("down");
-      setTargetPosition(undefined);
-    }, walkDuration);
-
-    return () => clearTimeout(timer);
-  }, [roomId, containerSize]);
-
-  useEffect(() => {
-    if (!action || action.progress >= 100) return;
-
-    const thinkInterval = setInterval(() => {
-      setCharacterState("think");
-      setTimeout(() => {
-        setCharacterState("idle");
-        setCharacterDirection("down");
-      }, 3000);
-    }, 8000);
-
-    return () => clearInterval(thinkInterval);
+    } else {
+      setCharacterState("walk-to-center");
+      setVisibleBubble(undefined); // 清除旧气泡
+    }
   }, [action]);
 
-  useEffect(() => {
-    if (latestLog?.text?.includes("打断") || latestLog?.text?.includes("提醒")) {
-      setCharacterState("idle");
-      setCharacterDirection("down");
+  // 角色走完全程后切换为 idle 并立即显示气泡
+  const handleReachedCenter = useCallback(() => {
+    setCharacterState("idle");
+    if (action && action.progress < 100) {
+      setVisibleBubble(action.task);
     }
-  }, [latestLog]);
+  }, [action]);
 
-  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    setClickTarget({ x, y });
-    setCharacterState("walk");
-  };
+  const walkableArea = roomFloorAreas[roomId];
 
   return (
-    <section
-      ref={containerRef}
-      className="room-stage"
-      onDoubleClick={handleDoubleClick}
-    >
+    <section ref={containerRef} className="room-stage">
       {/* 房间背景图 */}
       <img
         src={roomBackgrounds[roomId]}
@@ -140,12 +108,22 @@ export function RoomStage({ action, path, latestLog }: RoomStageProps) {
       {containerSize.width > 0 && (
         <CharacterSprite
           actionState={characterState}
-          direction={characterDirection}
-          targetPosition={targetPosition}
-          clickTarget={clickTarget}
+          direction="right"
           containerWidth={containerSize.width}
           containerHeight={containerSize.height}
-          walkableAreas={walkableAreas}
+          walkableArea={walkableArea}
+          onPositionChange={handleCharacterPosition}
+          onReachedCenter={handleReachedCenter}
+        />
+      )}
+
+      {/* 事件气泡 - 角色头顶 */}
+      {visibleBubble && characterPos.y > 0 && (
+        <EventBubble
+          text={visibleBubble}
+          x={characterPos.x}
+          y={characterPos.y - 128 * 3.5}
+          onComplete={handleBubbleComplete}
         />
       )}
 

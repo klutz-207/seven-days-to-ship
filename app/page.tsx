@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CharacterHud } from "@/components/CharacterHud";
 import { CorridorScene } from "@/components/CorridorScene";
+import { DailyNote } from "@/components/DailyNote";
 import { DayTransition } from "@/components/DayTransition";
 import { DialogueDock } from "@/components/DialogueDock";
 import { EndingReport } from "@/components/EndingReport";
@@ -11,17 +12,20 @@ import { StartScreen } from "@/components/StartScreen";
 import { StatusPanel } from "@/components/StatusPanel";
 import { Timeline } from "@/components/Timeline";
 import { detectImbalances } from "@/lib/imbalanceDetector";
-import { createInitialState } from "@/lib/stateUpdater";
-import type { GameState, DecisionResponse, InterventionType, RoomId } from "@/lib/types";
+import { callDecisionAPI, createMockDecision } from "@/lib/llmClient";
+import { advanceState, createInitialState } from "@/lib/stateUpdater";
+import { getDayPlanSummary } from "@/lib/planGenerator";
+import type { GameState, RoomId } from "@/lib/types";
 
 const STORAGE_KEY = "seven-days-later-state";
 
-type SceneMode = "start" | "day-transition" | "corridor" | "room" | "ending";
+type SceneMode = "start" | "day-transition" | "daily-note" | "corridor" | "room" | "ending";
 
 export default function Home() {
   const [state, setState] = useState<GameState>(() => createInitialState());
   const [loaded, setLoaded] = useState(false);
   const [aiReaction, setAiReaction] = useState<string | undefined>();
+  const [bubbleText, setBubbleText] = useState<string | undefined>();
   const [isThinking, setIsThinking] = useState(false);
 
   // 场景控制
@@ -29,6 +33,8 @@ export default function Home() {
   const [currentDay, setCurrentDay] = useState(1);
   const [nextRoom, setNextRoom] = useState<RoomId>("desk");
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [dailyTasks, setDailyTasks] = useState<string[]>([]);
+  const [eventCompleted, setEventCompleted] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -59,7 +65,15 @@ export default function Home() {
 
   // 天数过渡完成
   const handleDayTransitionComplete = useCallback(() => {
-    // 过渡完成后进入走廊
+    // 过渡完成后进入每日计划页面
+    const tasks = getDayPlanSummary(currentDay);
+    setDailyTasks(tasks);
+    setSceneMode("daily-note");
+  }, [currentDay]);
+
+  // 每日计划完成
+  const handleDailyNoteComplete = useCallback(() => {
+    // 计划显示完成后进入走廊
     if (currentAction) {
       setNextRoom(currentAction.room);
       setSceneMode("corridor");
@@ -70,284 +84,141 @@ export default function Home() {
 
   // 走廊进入房间
   const handleEnterRoom = useCallback(() => {
+    setEventCompleted(false);
     setSceneMode("room");
   }, []);
 
-  // 自动推进时间线
+  // 事件完成后自动推进：气泡消失后等 2 秒自动推进到下一个房间
   useEffect(() => {
-    if (!loaded || state.isEnded || !currentAction || sceneMode !== "room" || isTransitioning) return;
+    if (!eventCompleted || sceneMode !== "room" || isTransitioning || state.isEnded) return;
 
-    const interval = setInterval(() => {
+    const timer = setTimeout(() => {
       setState((prev) => {
         const action = prev.actions[prev.currentActionIndex];
         if (!action || action.progress >= 100) return prev;
 
-        const newProgress = Math.min(100, action.progress + 5);
-        const updatedActions = [...prev.actions];
-        updatedActions[prev.currentActionIndex] = { ...action, progress: newProgress };
+        const newState = advanceState(prev);
 
-        if (newProgress >= 100) {
-          const nextIndex = prev.currentActionIndex + 1;
-          const logEntry = {
-            id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            day: action.day,
-            room: action.room,
-            text: `${action.task} - 完成`,
-          };
+        const oldDay = prev.day;
+        const newDay = newState.day;
+        const oldRoom = prev.actions[prev.currentActionIndex]?.room;
+        const newRoom = newState.actions[newState.currentActionIndex]?.room;
 
-          // 检查是否需要切换天数
-          const nextAction = updatedActions[nextIndex];
-          const needDayChange = nextAction && nextAction.day > action.day;
-
-          if (nextIndex < updatedActions.length) {
-            // 如果需要切换天数，触发过渡
-            if (needDayChange) {
-              setIsTransitioning(true);
-              setTimeout(() => {
-                setCurrentDay(nextAction.day);
-                setSceneMode("day-transition");
-                setIsTransitioning(false);
-              }, 500);
-            } else if (nextAction && nextAction.room !== action.room) {
-              // 如果需要切换房间，进入走廊
-              setIsTransitioning(true);
-              setTimeout(() => {
-                setNextRoom(nextAction.room);
-                setSceneMode("corridor");
-                setIsTransitioning(false);
-              }, 500);
-            }
-
-            return {
-              ...prev,
-              actions: updatedActions,
-              currentActionIndex: nextIndex,
-              logs: [logEntry, ...prev.logs],
-            };
-          } else {
-            return {
-              ...prev,
-              actions: updatedActions,
-              isEnded: true,
-              logs: [logEntry, ...prev.logs],
-            };
-          }
+        if (newDay > oldDay) {
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setCurrentDay(newDay);
+            setSceneMode("day-transition");
+            setIsTransitioning(false);
+          }, 500);
+        } else if (newRoom && newRoom !== oldRoom) {
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setNextRoom(newRoom);
+            setSceneMode("corridor");
+            setIsTransitioning(false);
+          }, 500);
         }
 
-        return { ...prev, actions: updatedActions };
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [loaded, state.isEnded, currentAction, sceneMode, isTransitioning]);
-
-  // 调用 AI 决策 API
-  async function callDecisionAPI(intervention: InterventionType, note?: string): Promise<DecisionResponse | null> {
-    if (!currentAction) return null;
-
-    try {
-      const response = await fetch("/api/decision", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          room: currentAction.room,
-          task: currentAction.task,
-          intervention,
-          note,
-          day: state.day,
-          pressure: state.character.pressure,
-          selfhood: state.character.selfhood,
-          trust: state.character.trust,
-          focus: state.character.focus,
-        }),
+        return newState;
       });
 
-      if (!response.ok) return null;
-      return await response.json();
-    } catch (error) {
-      console.error("Decision API failed:", error);
-      return null;
-    }
-  }
+      setEventCompleted(false);
+    }, 2000);
 
-  // 提交指令（增加进度值）
+    return () => clearTimeout(timer);
+  }, [eventCompleted, sceneMode, isTransitioning, state.isEnded]);
+
+  // 提交指令：统一使用 advanceState 处理进度推进、指标更新、路径记录和跨天计划生成
   async function handleSubmit(note: string) {
-    if (isThinking || sceneMode !== "room") return;
+    if (isThinking || sceneMode !== "room" || !currentAction) return;
 
     setIsThinking(true);
     setAiReaction("思考中...");
 
-    const decision = await callDecisionAPI("remind", note);
+    const ctx = {
+      day: state.day,
+      room: currentAction.room,
+      task: currentAction.task,
+      pressure: state.character.pressure,
+      selfhood: state.character.selfhood,
+      trust: state.character.trust,
+      focus: state.character.focus,
+      metrics: state.metrics,
+      recentLogs: state.logs.slice(0, 5),
+    };
 
-    if (decision) {
-      setAiReaction(decision.inner_monologue);
+    const decision = await callDecisionAPI(ctx) ?? createMockDecision(ctx);
 
-      setState((prev) => {
-        const action = prev.actions[prev.currentActionIndex];
-        if (!action) return prev;
+    setState((prev) => {
+      // 统一使用 advanceState 推进状态
+      const nextState = advanceState(prev);
 
-        // 增加进度值到 20
-        const newProgress = Math.min(100, action.progress + 20);
-        const updatedActions = [...prev.actions];
-        updatedActions[prev.currentActionIndex] = { ...action, progress: newProgress };
+      // 检测场景切换需求
+      const needDayChange = nextState.day > prev.day;
+      const needRoomChange =
+        !needDayChange &&
+        nextState.actions[nextState.currentActionIndex]?.room !==
+          prev.actions[prev.currentActionIndex]?.room;
 
-        if (newProgress >= 100) {
-          const nextIndex = prev.currentActionIndex + 1;
-          const logEntry = {
+      if (nextState.isEnded) {
+        setTimeout(() => setSceneMode("ending"), 500);
+      } else if (needDayChange) {
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setCurrentDay(nextState.day);
+          setSceneMode("day-transition");
+          setIsTransitioning(false);
+        }, 500);
+      } else if (needRoomChange) {
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setNextRoom(nextState.actions[nextState.currentActionIndex].room);
+          setSceneMode("corridor");
+          setIsTransitioning(false);
+        }, 500);
+      }
+
+      // 合并 AI 决策产生的额外日志（advanceState 已写入一条基础日志）
+      return {
+        ...nextState,
+        logs: [
+          {
             id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            day: action.day,
-            room: action.room,
-            text: decision.log_text || `${action.task} - 完成`,
-          };
+            day: prev.day,
+            room: currentAction.room,
+            text: `[玩家] ${note}`,
+          },
+          {
+            id: `log-${Date.now() + 1}-${Math.random().toString(36).slice(2, 7)}`,
+            day: prev.day,
+            room: currentAction.room,
+            text: decision.log_text,
+          },
+          ...nextState.logs,
+        ].slice(0, 30),
+      };
+    });
 
-          const nextAction = updatedActions[nextIndex];
-          const needDayChange = nextAction && nextAction.day > action.day;
-
-          if (nextIndex < updatedActions.length) {
-            if (needDayChange) {
-              setIsTransitioning(true);
-              setTimeout(() => {
-                setCurrentDay(nextAction.day);
-                setSceneMode("day-transition");
-                setIsTransitioning(false);
-              }, 500);
-            } else if (nextAction && nextAction.room !== action.room) {
-              setIsTransitioning(true);
-              setTimeout(() => {
-                setNextRoom(nextAction.room);
-                setSceneMode("corridor");
-                setIsTransitioning(false);
-              }, 500);
-            }
-
-            return {
-              ...prev,
-              actions: updatedActions,
-              currentActionIndex: nextIndex,
-              logs: [logEntry, ...prev.logs],
-            };
-          } else {
-            return {
-              ...prev,
-              actions: updatedActions,
-              isEnded: true,
-              logs: [logEntry, ...prev.logs],
-            };
-          }
-        }
-
-        return {
-          ...prev,
-          actions: updatedActions,
-          logs: [
-            {
-              id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-              day: action.day,
-              room: action.room,
-              text: `[玩家] ${note}`,
-            },
-            {
-              id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-              day: action.day,
-              room: action.room,
-              text: decision.log_text,
-            },
-            ...prev.logs,
-          ],
-        };
-      });
-    } else {
-      // Fallback
-      const reactions = [
-        "收到。继续。",
-        "明白了，调整中...",
-        "好的，优先处理。",
-        "了解，我看看。",
-        "嗯，想一下。",
-        "有道理，改方向。",
-        "对，这个重要。",
-        "行，先做这个。",
-      ];
-      setAiReaction(reactions[Math.floor(Math.random() * reactions.length)]);
-
-      setState((prev) => {
-        const action = prev.actions[prev.currentActionIndex];
-        if (!action) return prev;
-
-        // 增加进度值到 20
-        const newProgress = Math.min(100, action.progress + 20);
-        const updatedActions = [...prev.actions];
-        updatedActions[prev.currentActionIndex] = { ...action, progress: newProgress };
-
-        if (newProgress >= 100) {
-          const nextIndex = prev.currentActionIndex + 1;
-          const logEntry = {
-            id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            day: action.day,
-            room: action.room,
-            text: `${action.task} - 完成（玩家指令）`,
-          };
-
-          const nextAction = updatedActions[nextIndex];
-          const needDayChange = nextAction && nextAction.day > action.day;
-
-          if (nextIndex < updatedActions.length) {
-            if (needDayChange) {
-              setIsTransitioning(true);
-              setTimeout(() => {
-                setCurrentDay(nextAction.day);
-                setSceneMode("day-transition");
-                setIsTransitioning(false);
-              }, 500);
-            } else if (nextAction && nextAction.room !== action.room) {
-              setIsTransitioning(true);
-              setTimeout(() => {
-                setNextRoom(nextAction.room);
-                setSceneMode("corridor");
-                setIsTransitioning(false);
-              }, 500);
-            }
-
-            return {
-              ...prev,
-              actions: updatedActions,
-              currentActionIndex: nextIndex,
-              logs: [logEntry, ...prev.logs],
-            };
-          } else {
-            return {
-              ...prev,
-              actions: updatedActions,
-              isEnded: true,
-              logs: [logEntry, ...prev.logs],
-            };
-          }
-        }
-
-        return {
-          ...prev,
-          actions: updatedActions,
-          logs: [
-            {
-              id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-              day: action.day,
-              room: action.room,
-              text: `[玩家] ${note}`,
-            },
-            ...prev.logs,
-          ],
-        };
-      });
+    setAiReaction(decision.inner_monologue);
+    if (decision.reply) {
+      setBubbleText(decision.reply);
     }
 
     setIsThinking(false);
     setTimeout(() => setAiReaction(undefined), 5000);
   }
 
+  // 事件完成回调：角色气泡结束后通知页面
+  const handleEventComplete = useCallback(() => {
+    setEventCompleted(true);
+  }, []);
+
   function handleRestart() {
     const next = createInitialState();
     setState(next);
     setAiReaction(undefined);
+    setBubbleText(undefined);
     setIsThinking(false);
     setSceneMode("start");
     setCurrentDay(1);
@@ -367,6 +238,11 @@ export default function Home() {
         <DayTransition day={currentDay} onComplete={handleDayTransitionComplete} />
       )}
 
+      {/* 每日计划 */}
+      {sceneMode === "daily-note" && (
+        <DailyNote day={currentDay} tasks={dailyTasks} onComplete={handleDailyNoteComplete} />
+      )}
+
       {/* 走廊场景 */}
       {sceneMode === "corridor" && (
         <CorridorScene targetRoom={nextRoom} onEnterRoom={handleEnterRoom} />
@@ -375,7 +251,7 @@ export default function Home() {
       {/* 房间场景 */}
       {sceneMode === "room" && (
         <>
-          <RoomStage action={currentAction} path={state.path} latestLog={state.logs[0]} />
+          <RoomStage action={currentAction} path={state.path} latestLog={state.logs[0]} bubbleText={bubbleText} onEventComplete={handleEventComplete} />
 
           {/* HUD */}
           <CharacterHud day={state.day} character={state.character} metrics={state.metrics} warnings={warnings} />
@@ -387,8 +263,8 @@ export default function Home() {
         </>
       )}
 
-      {/* 结局 */}
-      {sceneMode === "room" && state.isEnded && (
+      {/* 结局：独立场景分支 */}
+      {sceneMode === "ending" && (
         <div className="scene-ending">
           <EndingReport state={state} onRestart={handleRestart} />
         </div>

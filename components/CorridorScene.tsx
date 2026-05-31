@@ -5,13 +5,11 @@ import type { RoomId } from "@/lib/types";
 import { CharacterSprite } from "./CharacterSprite";
 
 interface CorridorSceneProps {
-  /** 目标房间门口位置 */
   targetRoom: RoomId;
-  /** 进入房间回调 */
   onEnterRoom: () => void;
 }
 
-/** 走廊中每个房间门口的位置（百分比，y 在地板上） */
+/** 走廊中每个房间门口的位置（百分比） */
 const doorPositions: Record<RoomId, { x: number; y: number }> = {
   computer: { x: 0.15, y: 0.8 },
   desk: { x: 0.32, y: 0.8 },
@@ -20,18 +18,12 @@ const doorPositions: Record<RoomId, { x: number; y: number }> = {
   showroom: { x: 0.85, y: 0.8 },
 };
 
-/** 走廊可行走区域（地板区域） */
-const corridorWalkable = [
-  { x: 0.05, y: 0.6, width: 0.9, height: 0.3 },
-];
+/** 走廊可行走区域 */
+const corridorWalkable = { x: 0.05, y: 0.6, width: 0.9, height: 0.3 };
 
 export function CorridorScene({ targetRoom, onEnterRoom }: CorridorSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const [characterState, setCharacterState] = useState<"idle" | "walk">("walk");
-  const [characterDirection, setCharacterDirection] = useState<"down" | "up" | "left" | "right">("right");
-  const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | undefined>();
-  const [clickTarget, setClickTarget] = useState<{ x: number; y: number } | undefined>();
   const [hasArrived, setHasArrived] = useState(false);
 
   useEffect(() => {
@@ -47,25 +39,17 @@ export function CorridorScene({ targetRoom, onEnterRoom }: CorridorSceneProps) {
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  // 自动走到目标门口
+  // 根据目标房间计算行走时间
   useEffect(() => {
     if (!containerSize.width) return;
 
+    // 计算距离对应的行走时间
     const door = doorPositions[targetRoom];
-    const targetX = door.x * containerSize.width;
-    const targetY = door.y * containerSize.height;
-
-    setTargetPosition({ x: targetX, y: targetY });
-    setCharacterState("walk");
-
-    // 计算到达时间
-    const startX = containerSize.width * 0.1;
-    const distance = Math.abs(targetX - startX);
-    const walkTime = distance * 3;
+    const startX = 0.1; // 从左侧开始
+    const distance = Math.abs(door.x - startX);
+    const walkTime = distance * 2000; // 每 10% 距离需要 200ms
 
     const timer = setTimeout(() => {
-      setCharacterState("idle");
-      setCharacterDirection("up");
       setHasArrived(true);
     }, walkTime);
 
@@ -78,39 +62,13 @@ export function CorridorScene({ targetRoom, onEnterRoom }: CorridorSceneProps) {
 
     const enterTimer = setTimeout(() => {
       onEnterRoom();
-    }, 1000);
+    }, 500);
 
     return () => clearTimeout(enterTimer);
   }, [hasArrived, onEnterRoom]);
 
-  // 双击跟随
-  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    setClickTarget({ x, y });
-    setCharacterState("walk");
-  };
-
-  // 计算可行走区域（像素坐标）
-  const walkableAreas = containerSize.width > 0
-    ? corridorWalkable.map((area) => ({
-        x: area.x * containerSize.width,
-        y: area.y * containerSize.height,
-        width: area.width * containerSize.width,
-        height: area.height * containerSize.height,
-      }))
-    : [];
-
   return (
-    <section
-      ref={containerRef}
-      className="room-stage"
-      onDoubleClick={handleDoubleClick}
-    >
+    <section ref={containerRef} className="room-stage">
       {/* 走廊背景图 */}
       <img
         src="/rooms/corridor.png"
@@ -120,16 +78,14 @@ export function CorridorScene({ targetRoom, onEnterRoom }: CorridorSceneProps) {
       {/* 半透明遮罩 */}
       <div className="absolute inset-0 bg-black/20 z-[2]" />
 
-      {/* 角色精灵 */}
+      {/* 角色精灵 - 自动行走 */}
       {containerSize.width > 0 && (
         <CharacterSprite
-          actionState={characterState}
-          direction={characterDirection}
-          targetPosition={targetPosition}
-          clickTarget={clickTarget}
+          actionState="walk"
+          direction="right"
           containerWidth={containerSize.width}
           containerHeight={containerSize.height}
-          walkableAreas={walkableAreas}
+          walkableArea={corridorWalkable}
         />
       )}
 

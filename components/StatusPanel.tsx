@@ -15,6 +15,14 @@ const metricLabels: Record<keyof ProjectMetrics, string> = {
   creativity: "创意",
 };
 
+const metricDescriptions: Record<keyof ProjectMetrics, string> = {
+  feature: "代码能跑的程度",
+  clarity: "设计能讲清楚的程度",
+  stability: "不崩不卡的程度",
+  presentation: "演示包装的程度",
+  creativity: "有独特想法的程度",
+};
+
 const characterLabels: Record<keyof CharacterState, { label: string; icon: string }> = {
   pressure: { label: "压力", icon: "/ui/pressure.png" },
   selfhood: { label: "自我感", icon: "/ui/selfhood.png" },
@@ -45,15 +53,18 @@ export function StatusPanel({ metrics, character, warnings }: StatusPanelProps) 
         <h3 className="ui-font mb-2 text-xs font-bold text-[var(--muted)]">项目指标</h3>
         <div className="grid gap-1.5">
           {(Object.keys(metricLabels) as Array<keyof ProjectMetrics>).map((key) => (
-            <div key={key} className="grid grid-cols-[3.5rem_1fr_2rem] items-center gap-2">
-              <span className="ui-font text-xs text-[var(--muted)]">{metricLabels[key]}</span>
+            <div key={key} className="grid grid-cols-[3.5rem_1fr_2.5rem] items-center gap-2">
+              <div className="flex flex-col">
+                <span className="ui-font text-xs text-[var(--muted)]">{metricLabels[key]}</span>
+                <span className="ui-font text-[10px] text-[var(--muted)] opacity-60">{metricDescriptions[key]}</span>
+              </div>
               <div className="progress-bar">
                 <div
                   className="progress-bar__fill"
                   style={{ width: `${metrics[key]}%` }}
                 />
               </div>
-              <span className="ui-font text-right text-xs font-bold">{metrics[key]}</span>
+              <span className="ui-font text-right text-lg font-black text-[var(--accent)]">{metrics[key]}</span>
             </div>
           ))}
         </div>

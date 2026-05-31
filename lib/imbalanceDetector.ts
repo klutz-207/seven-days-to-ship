@@ -9,7 +9,6 @@ export function detectImbalances(state: GameState): string[] {
   if (metrics.presentation >= 70 && metrics.stability <= 40) warnings.push("展示泡沫");
   if (metrics.stability >= 75 && metrics.creativity <= 35) warnings.push("稳定但无聊");
   if (character.pressure >= 80) warnings.push("高压冲刺");
-  if (state.interventionCount >= 3) warnings.push("频繁干预");
 
   return warnings;
 }

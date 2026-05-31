@@ -113,10 +113,9 @@ textarea {
 .timeline-panel {
   position: fixed;
   left: clamp(1rem, 3vw, 2rem);
-  top: 50%;
+  top: clamp(1rem, 3vw, 2rem);
   z-index: 40;
   width: min(20rem, calc(100vw - 2rem));
-  transform: translateY(-50%);
   border: 3px solid var(--line);
   background: rgba(255, 248, 234, 0.85);
   padding: 1rem;
@@ -127,8 +126,8 @@ textarea {
 /* 状态面板 - 磨砂玻璃风格 */
 .status-panel {
   position: fixed;
-  left: clamp(1rem, 3vw, 2rem);
-  top: clamp(1rem, 3vw, 2rem);
+  right: clamp(1rem, 3vw, 2rem);
+  top: calc(clamp(1rem, 3vw, 2rem) + 11rem);
   z-index: 50;
   width: min(18rem, calc(100vw - 2rem));
   border: 3px solid var(--line);

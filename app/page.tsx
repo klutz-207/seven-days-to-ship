@@ -141,25 +141,30 @@ export default function Home() {
   }) => {
     setCharacterData(character);
 
-    // 根据性格生成项目愿景
-    const vision = await callVisionAPI({
-      characterName: state.characterName,
-      personality: character.personality,
-      trait: character.trait,
-      catchphrase: character.catchphrase,
-    });
+    try {
+      // 根据性格生成项目愿景
+      const vision = await callVisionAPI({
+        characterName: state.characterName,
+        personality: character.personality,
+        trait: character.trait,
+        catchphrase: character.catchphrase,
+      });
 
-    if (vision) {
-      setState((prev) => ({
-        ...prev,
-        project: {
-          name: vision.projectName,
-          pitch: vision.pitch,
-          coreLoop: vision.coreLoop,
-        },
-      }));
+      if (vision) {
+        setState((prev) => ({
+          ...prev,
+          project: {
+            name: vision.projectName,
+            pitch: vision.pitch,
+            coreLoop: vision.coreLoop,
+          },
+        }));
+      }
+    } catch (error) {
+      console.error("Vision API failed:", error);
     }
 
+    // 确保总是跳转到角色卡片
     setSceneMode("character-card");
   }, [state.characterName]);
 

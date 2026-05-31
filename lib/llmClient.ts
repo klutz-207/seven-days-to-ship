@@ -1,4 +1,4 @@
-import type { DecisionResponse, RoomId, ProjectMetrics, CharacterState, ActionLogEntry, ProjectConcept, GameState } from "./types";
+import type { DecisionResponse, RoomId, ProjectMetrics, CharacterState, ActionLogEntry, ProjectConcept, GameState, PersonalityType } from "./types";
 
 export interface ThinkingResponse {
   thinking: string;
@@ -51,6 +51,7 @@ interface DecisionContext {
   selfhood: number;
   trust: number;
   focus: number;
+  personalityType?: PersonalityType;
   metrics?: ProjectMetrics;
   recentLogs?: ActionLogEntry[];
   playerInput?: string;
@@ -139,6 +140,7 @@ export async function callDecisionAPI(ctx: DecisionContext): Promise<DecisionRes
         selfhood: ctx.selfhood,
         trust: ctx.trust,
         focus: ctx.focus,
+        personalityType: ctx.personalityType,
         metrics: ctx.metrics,
         recentLogs: ctx.recentLogs,
         playerInput: ctx.playerInput,

@@ -1,4 +1,5 @@
 import { calculateMainProgress } from "@/lib/stateUpdater";
+import { PERSONALITY_CONFIGS } from "@/lib/personality";
 import type { CharacterState, ProjectMetrics } from "@/lib/types";
 
 interface CharacterHudProps {
@@ -25,6 +26,7 @@ export function CharacterHud({ day, character, metrics, warnings, characterName 
           <span className="font-bold text-[var(--accent)]">{calculateMainProgress(metrics)}%</span>
         </div>
         <h2 className="mt-1 truncate text-2xl font-black">{characterName || "数字人"}</h2>
+        <span className="tag mt-1">{PERSONALITY_CONFIGS[character.personalityType].name}</span>
         <div className="ui-font mt-3 grid grid-cols-2 gap-2 text-xs">
           <HudMetric label="压力" value={character.pressure} />
           <HudMetric label="自我感" value={character.selfhood} />

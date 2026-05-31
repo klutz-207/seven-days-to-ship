@@ -1,5 +1,7 @@
 export type RoomId = "computer" | "desk" | "cafe" | "bedroom" | "showroom";
 
+export type PersonalityType = "stubborn" | "obedient" | "anxious" | "confident";
+
 export type ActionStatus =
   | "pending"
   | "running"
@@ -30,6 +32,7 @@ export interface CharacterState {
   selfhood: number;
   trust: number;
   focus: number;
+  personalityType: PersonalityType;
 }
 
 export interface ActionNode {

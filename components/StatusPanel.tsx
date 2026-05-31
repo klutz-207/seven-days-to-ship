@@ -23,7 +23,7 @@ const metricDescriptions: Record<keyof ProjectMetrics, string> = {
   creativity: "有独特想法的程度",
 };
 
-const characterLabels: Record<keyof CharacterState, { label: string; icon: string }> = {
+const characterLabels: Record<string, { label: string; icon: string }> = {
   pressure: { label: "压力", icon: "/ui/pressure.png" },
   selfhood: { label: "自我感", icon: "/ui/selfhood.png" },
   trust: { label: "信任", icon: "/ui/trust.png" },

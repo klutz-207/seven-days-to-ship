@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { callLLM } from "@/lib/llm";
 import { DECISION_SYSTEM_PROMPT, buildDecisionPrompt } from "@/lib/prompts";
-import type { DecisionResponse, RoomId, AiDecision } from "@/lib/types";
+import { PERSONALITY_CONFIGS, getRejectPhrase, getAcceptPhrase } from "@/lib/personality";
+import type { DecisionResponse, RoomId, AiDecision, PersonalityType } from "@/lib/types";
 
 interface DecisionRequest {
   room: RoomId;
@@ -11,6 +12,7 @@ interface DecisionRequest {
   selfhood: number;
   trust: number;
   focus: number;
+  personalityType?: PersonalityType;
   metrics?: {
     feature: number;
     clarity: number;
@@ -74,7 +76,10 @@ const ROOM_NAMES: Record<RoomId, string> = {
 };
 
 function createMockDecision(body: DecisionRequest): DecisionResponse {
-  const { room, task, day, pressure, selfhood, focus, metrics, playerInput } = body;
+  const { room, task, day, pressure, selfhood, focus, metrics, playerInput, personalityType = "confident" } = body;
+
+  // 获取人格配置
+  const personalityConfig = PERSONALITY_CONFIGS[personalityType];
 
   // 核心状态判断
   const isHighPressure = pressure >= 75;
@@ -92,9 +97,29 @@ function createMockDecision(body: DecisionRequest): DecisionResponse {
       (metrics.stability >= 75 && metrics.creativity <= 35)
     : false;
 
-  // 灵感生成：玩家输入时有 30% 概率触发灵感
-  const hasInspiration = playerInput && Math.random() < 0.3;
+  // 灵感生成：根据人格类型调整概率
+  const baseInspirationChance = 0.3;
+  const adjustedInspirationChance = Math.max(0, Math.min(1, baseInspirationChance + personalityConfig.inspirationModifier));
+  const hasInspiration = playerInput && Math.random() < adjustedInspirationChance;
   const inspiration = hasInspiration ? pickRandom(INSPIRATIONS) : undefined;
+
+  // 玩家干预时的决策：根据人格类型决定是否抵抗
+  const shouldResist = playerInput && Math.random() > personalityConfig.acceptInterventionChance;
+  if (shouldResist) {
+    return buildResponse({
+      decision: "resist_intervention",
+      finalRoom: room,
+      finalTask: task,
+      queueType: "none",
+      queueAction: "",
+      reason: "我有我的想法。",
+      monologue: `他又来了……`,
+      fromRoom: room,
+      logText: `数字人听了玩家的建议，但决定坚持自己的方向。`,
+      reply: getRejectPhrase(personalityType),
+      inspiration,
+    });
+  }
 
   // 晚期 + 高压力 → 冲刺
   if (isLateGame && isHighPressure) {

@@ -12,7 +12,7 @@ interface CharacterCardProps {
   onEnter: () => void;
 }
 
-const statLabels: Record<keyof CharacterState, string> = {
+const statLabels: Record<string, string> = {
   pressure: "压力",
   selfhood: "自我感",
   trust: "信任",

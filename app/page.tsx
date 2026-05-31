@@ -18,6 +18,7 @@ import { StatusPanel } from "@/components/StatusPanel";
 import { Timeline } from "@/components/Timeline";
 import { detectImbalances } from "@/lib/imbalanceDetector";
 import { callDecisionAPI, callThinkingAPI, callVisionAPI, createMockDecision } from "@/lib/llmClient";
+import { inferPersonalityType } from "@/lib/personality";
 import { advanceState, advanceToNextAction, applyDecisionToState, createInitialState } from "@/lib/stateUpdater";
 import { getDayPlanSummary } from "@/lib/planGenerator";
 import type { GameState, RoomId } from "@/lib/types";
@@ -142,6 +143,18 @@ export default function Home() {
   }) => {
     setCharacterData(character);
 
+    // 根据性格推断人格类型
+    const personalityType = inferPersonalityType(character.personality, character.trait);
+
+    // 设置人格类型
+    setState((prev) => ({
+      ...prev,
+      character: {
+        ...prev.character,
+        personalityType,
+      },
+    }));
+
     try {
       // 根据性格生成项目愿景
       const vision = await callVisionAPI({
@@ -240,7 +253,7 @@ export default function Home() {
       const calcChanges = () => {
         const changes: Array<{ label: string; value: number; type: any }> = [];
         const metricKeys: Array<keyof typeof nextState.metrics> = ["feature", "clarity", "stability", "presentation", "creativity"];
-        const charKeys: Array<keyof typeof nextState.character> = ["pressure", "selfhood", "trust", "focus"];
+        const charKeys = ["pressure", "selfhood", "trust", "focus"] as const;
 
         for (const key of metricKeys) {
           const diff = nextState.metrics[key] - prev.metrics[key];
@@ -320,6 +333,7 @@ export default function Home() {
       selfhood: state.character.selfhood,
       trust: state.character.trust,
       focus: state.character.focus,
+      personalityType: state.character.personalityType,
       metrics: state.metrics,
       recentLogs: state.logs.slice(0, 5),
       playerInput: note,
@@ -354,7 +368,7 @@ export default function Home() {
       // 计算数值变化
       const changes: Array<{ label: string; value: number; type: any }> = [];
       const metricKeys: Array<keyof typeof nextState.metrics> = ["feature", "clarity", "stability", "presentation", "creativity"];
-      const charKeys: Array<keyof typeof nextState.character> = ["pressure", "selfhood", "trust", "focus"];
+      const charKeys = ["pressure", "selfhood", "trust", "focus"] as const;
 
       for (const key of metricKeys) {
         const diff = nextState.metrics[key] - prev.metrics[key];

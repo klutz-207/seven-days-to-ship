@@ -1,5 +1,6 @@
 import { generateDayPlan } from "./planGenerator";
 import { pickInspiration } from "./eventEngine";
+import { PERSONALITY_CONFIGS } from "./personality";
 import type {
   ActionNode,
   ActionLogEntry,
@@ -48,6 +49,7 @@ export function createInitialState(): GameState {
       selfhood: 52,
       trust: 48,
       focus: 66,
+      personalityType: "confident",
     },
     characterName: "",
     path: [],
@@ -216,11 +218,13 @@ function mergeCharacter(
   cost: Partial<CharacterState>,
   ratio: number,
 ): CharacterState {
+  const config = PERSONALITY_CONFIGS[character.personalityType];
   return {
-    pressure: clamp(character.pressure + (cost.pressure ?? 0) * ratio),
-    selfhood: clamp(character.selfhood + (cost.selfhood ?? 0) * ratio),
-    trust: clamp(character.trust + (cost.trust ?? 0) * ratio),
+    pressure: clamp(character.pressure + (cost.pressure ?? 0) * ratio * config.pressureMultiplier),
+    selfhood: clamp(character.selfhood + (cost.selfhood ?? 0) * ratio * config.selfhoodMultiplier),
+    trust: clamp(character.trust + (cost.trust ?? 0) * ratio * config.trustMultiplier),
     focus: clamp(character.focus + (cost.focus ?? 0) * ratio),
+    personalityType: character.personalityType,
   };
 }
 

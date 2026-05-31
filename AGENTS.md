@@ -4,123 +4,101 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## 项目概述
 
-《七天之后》— 半实时 AI 路径偏移型 Hackathon 模拟游戏。AI 数字人会持续执行自己的项目计划，玩家可以在任意行动节点选择继续观察或插入干预（打断/提醒/鼓励/追问/放行）。数字人根据项目进度、自身偏好、压力、自我感、注意力和对玩家的信任，决定继续、暂停、调整、转向或抗拒。每次行动点亮一个房间格子，形成可视化路径。七天后生成项目结局、人格结局和路径报告。
-
-核心定位：数字人持续行动，玩家随时干预，AI 自主决策，行动队列推进，房间路径可视化。
+《七天之后》— AI 叙事驱动的 Hackathon 模拟器。玩家观察一个 AI 数字人在 7 天内完成项目，可以随时用文字干预其决策。数字人有自主性，会自己决定去哪个房间、做什么任务。
 
 ## 技术栈
 
-- Next.js + Tailwind CSS
-- API Route（`/api/decision`、`/api/ending`）
-- LocalStorage 存储游戏状态（MVP 不需要数据库）
-- 外部 LLM API（通过 API Route 中转，禁止前端直连）
+- Next.js 16 App Router + React 19 + TypeScript
+- Tailwind CSS 4（像素风格主题）
+- Tauri 2（桌面应用打包）
+- DeepSeek V3.2（大模型 API，通过 `lib/llm.ts` 统一调用）
+- LocalStorage 存储游戏状态
 
 ## 架构原则
 
+**双进程 LLM 架构**：
+- 上帝进程（一次性）：开局调用，生成角色性格
+- 数字人进程（持久上下文）：7 天共享对话历史
+
 **AI 与控制层分工**：
-- AI 负责：以第一人称做决策、理解玩家干预、判断当前行动是否继续、生成内心独白/日志/结局文案
-- 控制层负责：生成今日行动队列、限制 AI 可选行为、检查房间合法性、应用房间基础数值、应用干预修正、检测失衡、判定结局、保存行动日志
+- AI 负责：生成计划、气泡思考、响应干预、写日志、描述产品
+- 控制层负责：状态更新、数值计算、失衡检测、结局判定
 
-**伪实时实现**：不需要真的后台自动运行。用"继续运行"按钮模拟持续执行——点击后行动节点推进 30%，出现事件，玩家可干预，再次点击继续。
-
-**API Key 安全**：API Key 必须放在后端环境变量中，绝不暴露到前端。
+**API Key 安全**：只放 `.env.local`，绝不暴露到前端
 
 ## 目录结构
 
 ```
-/app
-  page.tsx              主游戏页面
-  /api/decision          AI 决策接口
-  /api/ending            结局生成接口
-/components
-  ActionLog.tsx          左侧行动流日志
-  PathMap.tsx            右侧格子房间路径
-  StatusPanel.tsx        底部指标面板
-  InterventionPanel.tsx  干预输入面板
-  CurrentTaskCard.tsx    当前行动节点卡片
-  EndingReport.tsx       结局报告页
-/lib
-  planGenerator.ts       生成今日行动队列
-  actionQueue.ts         行动队列管理
-  stateUpdater.ts        指标更新
-  imbalanceDetector.ts   失衡检测
-  endingJudge.ts         结局判定
-  prompts.ts             AI Prompt
+app/
+  page.tsx              主游戏页面（状态机）
+  globals.css           全局样式（像素风格）
+  api/
+    character/          上帝推演接口
+    bubble/             房间气泡接口
+    decision/           AI 决策接口
+    journal/            DDAE 日志接口
+    ending/             最终产品接口
+    plan/               每日计划接口
+components/
+  NameInput.tsx         命名页面
+  GodNarration.tsx      上帝推演
+  CharacterCard.tsx     角色卡片
+  StartScreen.tsx       开始页面
+  CorridorScene.tsx     走廊场景
+  RoomStage.tsx         房间场景
+  CharacterSprite.tsx   角色精灵
+  EventBubble.tsx       气泡组件
+  DialogueDock.tsx      输入框
+  DailyNote.tsx         每日计划
+  JournalNote.tsx       DDAE 日志
+  EndingReport.tsx      结局报告
+  StatusPanel.tsx       项目指标面板
+  CharacterHud.tsx      角色状态面板
+  Timeline.tsx          时间线日志
+lib/
+  llm.ts                统一 LLM 调用
+  llmClient.ts          前端 API 调用
+  conversation.ts       对话历史管理
+  types.ts              类型定义
+  rooms.ts              房间数据
+  eventEngine.ts        事件引擎
+  stateUpdater.ts       状态更新
+  planGenerator.ts      行动计划生成
+  prompts.ts            AI Prompt
+  endingJudge.ts        结局判定
+  imbalanceDetector.ts  失衡检测
 ```
 
-## 核心数据结构
-
-**项目指标**（5 个子指标加权计算主进度）：
-- 功能完整度 × 0.35 + 玩法清晰度 × 0.25 + 技术稳定性 × 0.20 + 展示表现 × 0.10 + 创意表达 × 0.10
-
-**角色状态**（4 个）：压力、自我感、信任、注意力
-
-**偏好模型**（4 种）：工程偏好、创作偏好、展示偏好、焦虑偏好（玩家长期语言风格会改变偏好）
-
-**行动队列**：每天生成，每个节点包含 room、task、duration、progress、risk、expected_gain、expected_cost。节点状态：pending → running → paused/modified → completed/abandoned。
-
-## 核心游戏循环
+## 游戏流程
 
 ```
-每天：计划阶段 → 执行阶段 → 复盘阶段
-执行阶段伪实时循环：点击"继续运行" → 行动推进30% → 出现事件 → 玩家可干预 → AI决策 → 继续或偏移
+开始 → 命名 → 上帝推演 → 角色卡片 → Day 1
+  ├─ 每日计划（小纸条）
+  ├─ 走廊 → 房间 1 → 自动执行任务 → 任务完成 → 离开
+  ├─ 走廊 → 房间 2 → 自动执行任务 → 任务完成 → 离开
+  ├─ 走廊 → 房间 3 → 自动执行任务 → 任务完成 → 离开
+  └─ DDAE 日志 → Day 2 → ... → Day 7 → 最终产品
 ```
 
-## 干预系统（6 种）
+## 自主性机制
 
-| 干预 | 含义 | 正向影响 | 代价 |
-|------|------|----------|------|
-| 继续运行 | 不插手 | 效率+，注意力+ | 方向错误则失衡加剧 |
-| 打断 | 要求停下重新判断 | 可能修正方向，清晰+ | 压力+，注意力-，信任可能- |
-| 提醒 | 给新考虑因素 | 后续更稳，信任+ | 影响较弱 |
-| 鼓励 | 稳定情绪 | 压力-，信任+ | 对推进帮助有限 |
-| 追问 | 让数字人反思核心 | 清晰+，创意+，自我感+ | 进度慢，注意力可能- |
-| 放行 | 明确支持继续 | 效率+，信任+ | 可能忽视风险 |
+- 角色进入房间后自动执行任务（每 3 秒 +10 进度）
+- 显示气泡（角色的思考）
+- 玩家输入时暂停自动推进，5 秒后恢复
+- 只有任务完成（进度 100%）才能离开房间
 
-## AI 决策输出格式
+## 环境变量
 
-```json
-{
-  "decision": "continue_current | modify_current | pause_and_reflect | switch_task | switch_room | resist_intervention | misinterpret",
-  "final_room": "",
-  "final_task": "",
-  "queue_change": { "type": "none | modify_current | insert_next | replace_next | clear_rest", "new_action": "" },
-  "decision_reason": "",
-  "inner_monologue": "",
-  "player_influence": "low | medium | high",
-  "path_deviation": { "changed": true, "from": "", "to": "" },
-  "log_text": ""
-}
+```bash
+LLM_API_KEY=你的API密钥
+LLM_API_BASE_URL=https://tokendance.space/gateway
 ```
 
-## 房间系统（5 个）
+## 开发命令
 
-| 房间 | 功能 | 核心收益 | 代价 |
-|------|------|----------|------|
-| 电脑房 | 开发/调试/接API | 功能+12, 进度+10, 稳定+3 | 压力+6, 自我感-1, 注意力-5 |
-| 书桌 | 策划/复盘/重构 | 清晰+10, 创意+6, 自我感+4 | 进度慢, 注意力-2 |
-| 咖啡馆 | 试玩/反馈/交流 | 清晰+8, 进度+4, 展示+3 | 压力+4, 注意力-3 |
-| 卧室 | 休息/恢复 | 压力-12, 自我感+5, 注意力+8 | 进度停滞 |
-| 展示厅 | 路演/包装 | 展示+12, 进度+5, 清晰+4 | 压力+6, 稳定-1, 注意力-4 |
-
-## 失衡检测（6 种）
-
-功能膨胀（功能≥75, 清晰≤40）、概念空转（创意≥75, 功能≤35）、展示泡沫（展示≥70, 稳定≤40）、稳定但无聊（稳定≥75, 创意≤35）、高压冲刺（连续两行动选电脑房+压力≥80）、频繁打断（一天打断≥3次）
-
-## 结局系统（8 种）
-
-由控制层判定条件，AI 写成文字：
-1. 平衡完成型：《能被讲清楚，也能跑起来》
-2. 工程失衡型：《能运行的空房间》
-3. 创意空转型：《写在文档里的游戏》
-4. 展示泡沫型：《演示前一秒崩掉的梦》
-5. 高压完成型：《做完了，但他没有庆祝》
-6. 未完成苏醒型：《没有提交，但他知道要做什么了》
-7. 被打断的人：《他学会了停下，却忘了怎么开始》（频繁打断+自我感低+注意力低）
-8. 一直运行的人：《无人打断的偏航》（很少干预+原计划完成率高+某项严重失衡）
-
-## MVP 范围（两天 Hackathon）
-
-必须做：网页主界面、左侧行动流日志、右侧格子房间路径、当前行动节点、继续运行按钮、干预输入框、3 种干预（打断/提醒/放行）、5 个房间、项目进度条+5 个子指标、3 个角色指标（压力/自我感/信任）、AI 决策当前行动是否改变、控制层更新数值、Day 7 结局报告。
-
-不做：复杂 NPC、完整自由地图、数据库、复杂动画、多数字人、完整语音、大量美术、多周目系统。
+```bash
+npm run dev          # 启动开发服务器
+npm run build        # 构建 Web 版
+npm run tauri:dev    # 启动桌面应用开发
+npm run tauri:build  # 构建桌面应用
+```

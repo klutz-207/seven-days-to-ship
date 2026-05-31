@@ -68,6 +68,7 @@ export async function POST(request: Request) {
 
     const prompt = buildProductPrompt({
       endingTitle,
+      project: state.project,
       metrics: state.metrics,
       character: state.character,
       day: state.day,

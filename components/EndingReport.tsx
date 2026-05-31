@@ -64,6 +64,17 @@ export function EndingReport({ state, onRestart }: EndingReportProps) {
           </div>
         ) : ending ? (
           <div className="border-2 border-[var(--line)] bg-[var(--panel)] p-6 shadow-[8px_8px_0_var(--line)]">
+            {/* 项目构想 */}
+            {state.project && (
+              <div className="mb-6 border-b-2 pb-4" style={{ borderColor: "var(--line)" }}>
+                <p className="ui-font text-xs uppercase tracking-[0.14em] text-[var(--muted)]">
+                  数字人构想的项目
+                </p>
+                <h3 className="mt-2 text-2xl font-black text-[var(--ink)]">《{state.project.name}》</h3>
+                <p className="ui-font mt-1 text-sm text-[var(--muted)]">{state.project.pitch}</p>
+              </div>
+            )}
+
             {/* 产品名称 */}
             <h2 className="text-3xl font-black text-[var(--ink)]">{ending.productName}</h2>
             <p className="ui-font mt-2 text-[var(--muted)]">{ending.description}</p>

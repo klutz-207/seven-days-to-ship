@@ -538,6 +538,11 @@ export const PRODUCT_SYSTEM_PROMPT = `你是《七天之后》的产品描述生
 
 interface ProductContext {
   endingTitle: string;
+  project?: {
+    name: string;
+    pitch: string;
+    coreLoop: string;
+  };
   metrics: {
     feature: number;
     clarity: number;
@@ -558,6 +563,17 @@ interface ProductContext {
 
 export function buildProductPrompt(ctx: ProductContext): string {
   const lines: string[] = [];
+
+  // 项目信息
+  if (ctx.project) {
+    lines.push(`## 数字人构想的项目`);
+    lines.push(`- 项目名称：《${ctx.project.name}》`);
+    lines.push(`- 项目简介：${ctx.project.pitch}`);
+    lines.push(`- 核心玩法：${ctx.project.coreLoop}`);
+    lines.push("");
+    lines.push(`注意：最终产品必须基于这个项目构想，结合数字人的实际历程来描述。`);
+    lines.push("");
+  }
 
   // 房间路径分析
   const roomFreq: Partial<Record<RoomId, number>> = {};

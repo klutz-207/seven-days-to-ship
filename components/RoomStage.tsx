@@ -33,6 +33,8 @@ interface RoomStageProps {
   onAutoProgress?: () => void;
   /** 暂停自动推进（玩家输入时为 true） */
   isPaused?: boolean;
+  /** 打字机完成后暂停回调 */
+  onTypewriterPause?: (paused: boolean) => void;
 }
 
 const roomBackgrounds: Record<RoomId, string> = {
@@ -52,7 +54,7 @@ const roomFloorAreas: Record<RoomId, { x: number; y: number; width: number; heig
   showroom: { x: 0.15, y: 0.55, width: 0.7, height: 0.3 },
 };
 
-export function RoomStage({ action, path, latestLog, project, bubbleText, thinkingText, isThinkingLoading, showTyping, metricChanges, eventCompleted, onEventComplete, onAutoProgress, isPaused }: RoomStageProps) {
+export function RoomStage({ action, path, latestLog, project, bubbleText, thinkingText, isThinkingLoading, showTyping, metricChanges, eventCompleted, onEventComplete, onAutoProgress, isPaused, onTypewriterPause }: RoomStageProps) {
   const roomId = action?.room ?? "desk";
   const room = rooms[roomId];
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,16 +84,18 @@ export function RoomStage({ action, path, latestLog, project, bubbleText, thinki
         } else {
           clearInterval(interval);
           setIsTyping(false);
-          // 打字机完成后，保持显示 2 秒
+          // 打字机完成后，暂停自动推进 2 秒，保持显示
+          onTypewriterPause?.(true);
           setTimeout(() => {
             setTypewriterSource(null);
+            onTypewriterPause?.(false);
           }, 2000);
         }
       }, 50);
 
       return () => clearInterval(interval);
     }
-  }, [thinkingText, showTyping]);
+  }, [thinkingText, showTyping, onTypewriterPause]);
 
   // 打断回复打字机效果
   useEffect(() => {

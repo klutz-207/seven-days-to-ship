@@ -35,6 +35,7 @@ export default function Home() {
   const [isThinking, setIsThinking] = useState(false);
   const [isAutoProgress, setIsAutoProgress] = useState(true);
   const [hasShownHalf, setHasShownHalf] = useState(false);
+  const [typewriterPaused, setTypewriterPaused] = useState(false);
 
   // 场景控制
   const [sceneMode, setSceneMode] = useState<SceneMode>("start");
@@ -216,9 +217,14 @@ export default function Home() {
     }
   }, [currentAction, state, characterData]);
 
+  // 打字机暂停回调
+  const handleTypewriterPause = useCallback((paused: boolean) => {
+    setTypewriterPaused(paused);
+  }, []);
+
   // 自动推进回调：角色自主执行，每 3 秒推进 +25 进度
   const handleAutoProgress = useCallback(() => {
-    if (!isAutoProgress || !currentAction || isThinking) return;
+    if (!isAutoProgress || !currentAction || isThinking || typewriterPaused) return;
     if (currentAction.progress >= 100) return;
 
     setState((prev) => {
@@ -291,7 +297,7 @@ export default function Home() {
         ].slice(0, 24),
       };
     });
-  }, [isAutoProgress, currentAction, isThinking, hasShownHalf]);
+  }, [isAutoProgress, currentAction, isThinking, hasShownHalf, typewriterPaused]);
 
   // 提交指令：打断数字人思考，获取反应
   async function handleSubmit(note: string) {
@@ -533,6 +539,7 @@ export default function Home() {
             onEventComplete={handleEventComplete}
             onAutoProgress={handleAutoProgress}
             isPaused={!isAutoProgress || isThinking}
+            onTypewriterPause={handleTypewriterPause}
           />
 
           {/* HUD */}

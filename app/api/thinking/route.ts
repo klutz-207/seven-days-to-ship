@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
   try {
     const roomCtx = ROOM_CONTEXT[body.room];
-    const systemPrompt = `你是数字人"${body.characterName}"，正在参加一个3天AI Hackathon。
+    const systemPrompt = `你是数字人"${body.characterName}"，正在参加一个2天AI Hackathon。
 
 你正在做的项目：《${body.project?.name || "未命名项目"}》
 项目简介：${body.project?.pitch || "还没想好做什么"}

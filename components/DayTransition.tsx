@@ -81,8 +81,7 @@ export function DayTransition({ day, onComplete }: DayTransitionProps) {
         {/* 提示 */}
         <p className="ui-font mt-8 text-sm text-white/30">
           {day === 1 && "新的开始"}
-          {day === 2 && "深入开发"}
-          {day === 3 && "最终冲刺"}
+          {day === 2 && "最终冲刺"}
         </p>
       </div>
     </div>

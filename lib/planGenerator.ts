@@ -246,15 +246,13 @@ export function generateDayPlan(day: number): ActionNode[] {
 /** 获取当前阶段名称 */
 export function getPhaseName(day: number): string {
   if (day === 1) return "第一天：起步";
-  if (day === 2) return "第二天：深入";
-  return "第三天：冲刺";
+  return "第二天：冲刺";
 }
 
 /** 获取当前阶段描述 */
 export function getPhaseDescription(day: number): string {
   if (day === 1) return "确定方向，搭建框架";
-  if (day === 2) return "核心开发，完善功能";
-  return "最终打磨，准备展示";
+  return "核心开发，完成展示";
 }
 
 /** 获取当天行动的任务描述摘要 */

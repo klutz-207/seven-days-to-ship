@@ -129,11 +129,11 @@ export function advanceToNextAction(state: GameState): GameState {
   }
 
   const nextDay = state.day + 1;
-  const shouldEnd = nextDay > 3; // 3天结束
+  const shouldEnd = nextDay > 2; // 2天结束
 
   return {
     ...state,
-    day: shouldEnd ? 3 : nextDay,
+    day: shouldEnd ? 2 : nextDay,
     currentActionIndex: 0,
     actions: shouldEnd ? state.actions : generateDayPlan(nextDay),
     isEnded: shouldEnd,

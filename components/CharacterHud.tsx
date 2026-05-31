@@ -21,7 +21,7 @@ export function CharacterHud({ day, character, metrics, warnings, characterName 
       </div>
       <div className="min-w-0">
         <div className="ui-font flex items-center justify-between gap-3 text-xs text-[var(--muted)]">
-          <span>Day {day} / 3</span>
+          <span>Day {day} / 2</span>
           <span className="font-bold text-[var(--accent)]">{calculateMainProgress(metrics)}%</span>
         </div>
         <h2 className="mt-1 truncate text-2xl font-black">{characterName || "数字人"}</h2>

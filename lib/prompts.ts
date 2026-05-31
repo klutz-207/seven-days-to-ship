@@ -163,7 +163,7 @@ export function buildDecisionPrompt(ctx: DecisionContext): string {
 
   // 基本状态
   lines.push(`## 当前状态`);
-  lines.push(`- 第 ${ctx.day} 天 / 共 3 天`);
+  lines.push(`- 第 ${ctx.day} 天 / 共 2 天`);
   lines.push(`- 当前房间：${ROOM_NAMES[ctx.room]}`);
   lines.push(`- 当前任务：${ctx.task}`);
   lines.push(`- 压力值：${ctx.pressure}/100 ${getPressureDesc(ctx.pressure)}`);
@@ -312,7 +312,7 @@ export function buildInterventionPrompt(ctx: InterventionContext): string {
 
   lines.push("");
   lines.push(`## 当前状态`);
-  lines.push(`- 第 ${ctx.day} 天 / 共 3 天`);
+  lines.push(`- 第 ${ctx.day} 天 / 共 2 天`);
   lines.push(`- 当前房间：${ROOM_NAMES[ctx.room]}`);
   lines.push(`- 当前任务：${ctx.task}`);
   lines.push(`- 压力值：${ctx.pressure}/100 ${getPressureDesc(ctx.pressure)}`);
@@ -367,7 +367,7 @@ export function buildBubblePrompt(ctx: BubbleContext): string {
   const lines: string[] = [];
 
   lines.push(`## 当前状态`);
-  lines.push(`- 第 ${ctx.day} 天 / 共 3 天`);
+  lines.push(`- 第 ${ctx.day} 天 / 共 2 天`);
   lines.push(`- 房间：${ROOM_NAMES[ctx.roomId]}`);
   lines.push(`- 压力：${ctx.pressure}/100`);
   lines.push(`- 自我感：${ctx.selfhood}/100`);
@@ -413,7 +413,7 @@ export function buildJournalPrompt(ctx: JournalContext): string {
 
   lines.push(`## 基本信息`);
   lines.push(`- 我的名字：${ctx.characterName}`);
-  lines.push(`- 今天是第 ${ctx.day} 天 / 共 3 天`);
+  lines.push(`- 今天是第 ${ctx.day} 天 / 共 2 天`);
 
   lines.push("");
   lines.push(`## 今天做了什么`);

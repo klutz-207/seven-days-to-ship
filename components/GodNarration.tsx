@@ -293,8 +293,18 @@ export function GodNarration({ name, onComplete }: GodNarrationProps) {
 
 /** 从内容中提取 narration 字段 */
 function extractNarration(content: string): string {
-  // 尝试匹配 JSON 中的 narration 字段
-  const narrationMatch = content.match(/"narration"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  // 尝试匹配完整的 JSON
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed.narration) {
+      return parsed.narration;
+    }
+  } catch {
+    // JSON 不完整，继续
+  }
+
+  // 尝试匹配 JSON 中的 narration 字段（可能不完整）
+  const narrationMatch = content.match(/"narration"\s*:\s*"((?:[^"\\]|\\.)*)/);
   if (narrationMatch) {
     // 解析 JSON 转义字符
     try {

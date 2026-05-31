@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const body = (await request.json()) as DecisionRequest;
 
   // 如果没有配置 API Key，使用 mock
-  if (!process.env.LLM_API_KEY || !process.env.LLM_API_BASE_URL) {
+  if (!process.env.LLM_API_KEY) {
     return NextResponse.json(createMockDecision(body));
   }
 

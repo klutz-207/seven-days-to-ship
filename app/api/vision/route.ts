@@ -18,7 +18,7 @@ interface VisionResponse {
 export async function POST(request: Request) {
   const body = (await request.json()) as VisionRequest;
 
-  if (!process.env.LLM_API_KEY || !process.env.LLM_API_BASE_URL) {
+  if (!process.env.LLM_API_KEY) {
     return NextResponse.json(createMockVision(body));
   }
 
